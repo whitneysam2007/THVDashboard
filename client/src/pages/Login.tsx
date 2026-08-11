@@ -34,7 +34,7 @@ export default function Login({ accessRevoked = false }: { accessRevoked?: boole
         {/* Logo */}
         <div className="flex justify-center mb-8">
           <img
-            src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663520822653/JvzxqlMoFdDNLuKe.svg"
+            src="/thv-logo.svg"
             alt="The Humble Village"
             className="w-20 h-20"
           />

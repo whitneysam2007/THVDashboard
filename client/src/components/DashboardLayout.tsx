@@ -45,7 +45,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       >
         {/* Logo + brand */}
         <div className="flex items-center gap-3 px-6 pt-8 pb-6 border-b border-[oklch(0.30_0.018_55)]">
-          <img src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663520822653/JvzxqlMoFdDNLuKe.svg" alt="THV" className="w-10 h-10 rounded-full" />
+          <img src="/thv-logo.svg" alt="THV" className="w-10 h-10 rounded-full" />
           <div>
             <div className="font-display text-lg leading-tight" style={{ color: 'oklch(0.96 0.008 75)' }}>
               The Humble<br />Village
@@ -109,7 +109,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <button onClick={() => setMobileOpen(true)} className="p-1">
             <Menu size={20} style={{ color: 'oklch(0.22 0.018 55)' }} />
           </button>
-          <img src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663520822653/JvzxqlMoFdDNLuKe.svg" alt="THV" className="w-7 h-7" />
+          <img src="/thv-logo.svg" alt="THV" className="w-7 h-7" />
         </header>
 
         <main className="flex-1 overflow-auto">
