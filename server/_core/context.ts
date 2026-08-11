@@ -46,7 +46,7 @@ export async function createContext(
             openId: authData.user.id,
             email,
             name: authData.user.user_metadata?.full_name ?? allowed.display_name,
-            loginMethod: 'magic-link',
+            loginMethod: 'password',
             role: allowed.role === 'owner' ? 'admin' : 'user',
           };
         }

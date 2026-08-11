@@ -41,8 +41,24 @@
 - [ ] Optionally enable Cloudflare Turnstile in Supabase and set VITE_TURNSTILE_SITE_KEY in Netlify
 - [ ] Optionally set the recommended Supabase session lifetime and inactivity timeout
 - [x] Diagnosed and restored production dashboard data reads on the live Netlify deployment by bundling Express in the Netlify function
-- [ ] Push THV logo and favicon assets to GitHub and confirm the Netlify deployment completes
-- [ ] Verify live Netlify serves the standalone logo/favicon assets and no longer depends on Manus-hosted logo URLs
+- [x] Pushed THV logo and favicon assets to GitHub and confirmed the Netlify deployment completed
+- [x] Verified live Netlify serves the standalone logo/favicon assets and no longer depends on Manus-hosted logo URLs
+- [x] Promoted emary626@gmail.com to active dashboard owner access and verified the persisted Supabase role
+- [ ] Verify emary626@gmail.com sees Team Access in the live Netlify sidebar after a fresh login
+- [ ] Retire the magic-link recovery path after production password authentication and owner Team Access are verified live
+- [x] Superseded custom SMTP setup after choosing owner-managed password authentication instead of email links
+- [x] Superseded SMTP provider selection after choosing owner-managed password authentication instead of email links
+- [x] Superseded Resend domain and Supabase SMTP configuration after choosing password authentication
+- [x] Superseded Resend-delivered magic-link testing after choosing password authentication
+- [x] Selected owner-managed individual email-and-password accounts instead of shared passwords or email links
+- [x] Superseded Resend-backed magic links with a seven-day session after choosing password authentication
+- [x] Replaced magic-link sign-in with owner-managed individual email-and-password authentication
+- [x] Set emary626@gmail.com as the initial dashboard owner password account
+- [x] Added owner controls to create accounts, set temporary passwords, and reset member passwords
+- [ ] Push and verify the tested password-authentication migration on GitHub and Netlify
+- [x] Fixed the stale isActiveAllowedMember runtime import/export error by restarting the development server and verified the password login screen loads
+- [x] End-to-end verified emary626@gmail.com owner password authentication and protected Team Access API access
+- [x] End-to-end verified owner account creation and password reset using a temporary test account, then removed it
 
 ## Active bug
 

@@ -1,6 +1,6 @@
 # THV Donor Dashboard — Netlify Handoff
 
-The dashboard is prepared as a **Vite frontend with a Netlify serverless tRPC API**. Supabase provides both passwordless email authentication and the production PostgreSQL database. The current live data has been imported and reconciled in Supabase; the original Manus database remains unchanged as a fallback.
+The dashboard is prepared as a **Vite frontend with a Netlify serverless tRPC API**. Supabase provides owner-managed individual email-and-password authentication and the production PostgreSQL database. The current live data has been imported and reconciled in Supabase; the original Manus database remains unchanged as a fallback.
 
 | Imported record type | Verified count |
 |---|---:|
@@ -24,7 +24,7 @@ Set the following environment variables in **Netlify → Site configuration → 
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | Browser and functions | Browser-safe Supabase publishable/anon key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Functions only | Secured server-side tRPC data access |
 
-## Supabase magic-link configuration
+## Supabase password-account configuration
 
 In **Supabase → Authentication → URL Configuration**, the current production configuration is:
 
@@ -34,15 +34,15 @@ In **Supabase → Authentication → URL Configuration**, the current production
 | Redirect URL | `https://thvdonordashboard.netlify.app` |
 | Redirect URL pattern | `https://thvdonordashboard.netlify.app/**` |
 
-Add the custom domain in the same form after it is connected. The login screen calls Supabase `signInWithOtp`, which sends an email link to the approved team addresses. A fresh production magic link was verified on 2026-08-11 to return an approved user to an authenticated Netlify dashboard session.
+Add the custom domain in the same form after it is connected. The login screen calls Supabase `signInWithPassword`; it does not depend on passwordless email delivery. The production owner account is provisioned through Supabase’s server-side admin API and is restricted by the dashboard allowlist.
 
-The approved list is stored in the Supabase `allowed_team_emails` table and is enforced again by the server API after Supabase authenticates a user. The listed addresses include Liz, Lauren, Anna, Brenley, Emily, Amy, and Kirsten’s approved addresses. The production login requests an existing account only; the owner provisions new access through the Team Access invitation workflow.
+The approved list is stored in the Supabase `allowed_team_emails` table and is enforced again by the server API after Supabase authenticates a user. The listed addresses include Liz, Lauren, Anna, Brenley, Emily, Amy, and Kirsten’s approved addresses. Public sign-up remains disabled; an owner provisions new access through Team Access by setting an individual password for an approved member.
 
 For the owner-managed access workflow, invitation-only enrollment, optional CAPTCHA, and recommended session settings, follow [`TEAM_ACCESS_SECURITY.md`](./TEAM_ACCESS_SECURITY.md).
 
 ## Before inviting the team
 
-Open the deployed site and send a magic link to one approved email. Confirm that the dashboard loads the 16 migrated donors and that a read-only page refresh preserves the data. Then create and complete one harmless test task to confirm the deployed API can write to Supabase. Delete that test task once verified.
+Open the deployed site and sign in with one owner-created email-and-password account. Confirm that the dashboard loads the 16 migrated donors and that a read-only page refresh preserves the data. Then create and complete one harmless test task to confirm the deployed API can write to Supabase. Delete that test task once verified.
 
 ## Data safety
 

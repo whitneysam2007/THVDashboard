@@ -15,3 +15,11 @@ Supabase documents that sessions are persistent by default. Pro plans and above 
 ## Implementation decision
 
 The THV dashboard will retain passwordless email links for invited and active team members only. Owner-managed allowlist status will be enforced by the Netlify server API. CAPTCHA is prepared as a configuration-backed optional gate so it can be enabled after the owner creates a Cloudflare Turnstile or hCaptcha site key.
+
+## Production email delivery finding — 2026-08-11
+
+Supabase’s built-in Auth email service is not suitable for production dashboard access. The official rate-limit documentation states that the built-in provider allows **2 emails per hour** project-wide. The SMTP documentation states that a custom SMTP provider is required for production passwordless emails, invitations, and other authentication email flows. The active owner magic-link failure was confirmed as Supabase `429: email rate limit exceeded`, not an allowlist or owner-role failure.
+
+- Rate limits: https://supabase.com/docs/guides/auth/rate-limits
+- Custom SMTP: https://supabase.com/docs/guides/auth/auth-smtp
+- Passwordless magic links: https://supabase.com/docs/guides/auth/auth-email-passwordless

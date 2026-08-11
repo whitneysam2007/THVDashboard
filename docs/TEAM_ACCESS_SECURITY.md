@@ -2,19 +2,19 @@
 
 ## Access model
 
-The dashboard remains passwordless. Only an **active, approved email address** can access dashboard data. The Netlify server verifies the Supabase identity token and then checks `allowed_team_emails`; browser clients cannot query relationship data directly because Row Level Security remains enabled with no browser-facing table policies.
+The dashboard uses owner-managed individual email-and-password accounts. Only an **active, approved email address** with an owner-created Supabase password can access dashboard data. The Netlify server verifies the Supabase identity token and then checks `allowed_team_emails`; browser clients cannot query relationship data directly because Row Level Security remains enabled with no browser-facing table policies.
 
-Liz is the sole **owner**. Owners can open **Team Access** from the dashboard sidebar to invite a person, pause access, restore access, or remove an email from the approved list. Pausing or removing a person takes effect on their next protected API request. The owner cannot pause or remove her own access from the dashboard.
+Liz and Emary are **owners**. Owners can open **Team Access** from the dashboard sidebar to create a person’s password account, reset a password, pause access, restore access, or remove an email from the approved list. Pausing or removing a person takes effect on their next protected API request. An owner cannot pause or remove their own access from the dashboard.
 
-## Invite a new team member
+## Create a new team member account
 
-Open **Team Access**, enter the person’s name and email, then select **Send invitation**. The dashboard adds that email to the active access list and uses Supabase’s server-side invitation flow to send a one-time enrollment email. After accepting the invitation, the person signs in normally with an email link.
+Open **Team Access**, enter the person’s name, email, and a temporary password of at least 14 characters, then select **Create account**. The dashboard adds that email to the active access list and creates a confirmed Supabase password account. Give the person the temporary password through a private channel; they sign in with their email and password.
 
 Use **Pause** for temporary leave or access review. Use **Remove** only when the person should no longer be in the approved access list.
 
 ## Required Supabase settings
 
-In **Supabase → Authentication → Providers → Email**, turn off **Allow new users to sign up** after the deployment that includes Team Access is live. This makes the authentication system invitation-first. The dashboard login also sends `shouldCreateUser: false`, so the normal login screen cannot create new users. The owner confirmed this Supabase setting was disabled on 2026-08-11; review it whenever Supabase authentication settings are changed.
+In **Supabase → Authentication → Providers → Email**, keep **Allow new users to sign up** turned off. This prevents self-enrollment; only an owner using Team Access can create a password account. The owner confirmed this Supabase setting was disabled on 2026-08-11; review it whenever Supabase authentication settings are changed.
 
 Keep the production URL settings below in **Supabase → Authentication → URL Configuration**:
 
@@ -26,7 +26,7 @@ Keep the production URL settings below in **Supabase → Authentication → URL 
 
 ## Optional bot protection
 
-The login screen is ready for **Cloudflare Turnstile**. This protection is optional until it is configured; without its site key, the normal passwordless login remains unchanged.
+The login screen is ready for **Cloudflare Turnstile**. This protection is optional until it is configured; without its site key, normal email-and-password login remains unchanged.
 
 1. Create a Turnstile widget for `thvdonordashboard.netlify.app` in Cloudflare.
 2. In **Supabase → Authentication → Bot and Abuse Protection**, enable CAPTCHA, select Turnstile, paste the Turnstile **secret key**, and save.

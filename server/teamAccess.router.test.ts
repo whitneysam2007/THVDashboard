@@ -8,7 +8,7 @@ function memberContext(): TrpcContext {
       openId: 'member-test',
       email: 'member@thehumblevillage.org',
       name: 'Member',
-      loginMethod: 'magic-link',
+      loginMethod: 'password',
       role: 'user',
     },
     req: { headers: {} } as TrpcContext['req'],
@@ -22,7 +22,7 @@ function ownerContext(): TrpcContext {
       openId: 'owner-test',
       email: 'liz@thehumblevillage.org',
       name: 'Liz',
-      loginMethod: 'magic-link',
+      loginMethod: 'password',
       role: 'admin',
     },
     req: { headers: {} } as TrpcContext['req'],
@@ -34,6 +34,18 @@ describe('team access router', () => {
   it('rejects access-list reads from non-owner team members', async () => {
     const caller = appRouter.createCaller(memberContext());
     await expect(caller.teamAccess.list()).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  it('rejects password account creation and reset from non-owner team members', async () => {
+    const caller = appRouter.createCaller(memberContext());
+    await expect(caller.teamAccess.createAccount({
+      email: 'new.member@thehumblevillage.org',
+      password: 'StrongTemporaryPass!1',
+    })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(caller.teamAccess.setPassword({
+      email: 'new.member@thehumblevillage.org',
+      password: 'AnotherStrongPass!1',
+    })).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
 
   it('allows the owner to retrieve the current approved access list', async () => {

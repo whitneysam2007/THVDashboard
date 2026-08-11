@@ -59,37 +59,55 @@ export const appRouter = router({
       });
     }),
 
-    invite: adminProcedure.input(z.object({
+    createAccount: adminProcedure.input(z.object({
       email: z.string().email(),
       displayName: z.string().trim().min(1).max(100).optional(),
+      password: z.string().min(14, 'Use a password with at least 14 characters.').max(128),
     })).mutation(async ({ ctx, input }) => {
       const email = normalizeTeamEmail(input.email);
       const supabase = getSupabaseServerClient();
       const displayName = input.displayName || displayNameFromEmail(email);
       const { data: existingAuth, error: existingAuthError } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
       if (existingAuthError) throw new Error(existingAuthError.message);
-      const alreadyEnrolled = (existingAuth.users ?? []).some(user => normalizeTeamEmail(user.email ?? '') === email && Boolean(user.email_confirmed_at));
+      const existingUser = (existingAuth.users ?? []).find(user => normalizeTeamEmail(user.email ?? '') === email);
       const { error: allowlistError } = await (supabase
         .from('allowed_team_emails') as any)
-        .upsert({ email, display_name: displayName, role: 'member', is_active: true, updated_at: new Date().toISOString() }, { onConflict: 'email' });
+        .upsert({ email, display_name: displayName, role: 'member', is_active: true, invited_at: new Date().toISOString(), updated_at: new Date().toISOString() }, { onConflict: 'email' });
       if (allowlistError) throw new Error(allowlistError.message);
 
-      if (alreadyEnrolled) {
-        return { status: 'reactivated' as const, email };
+      if (existingUser) {
+        const { error } = await supabase.auth.admin.updateUserById(existingUser.id, {
+          password: input.password,
+          email_confirm: true,
+          user_metadata: { ...existingUser.user_metadata, full_name: displayName },
+        });
+        if (error) throw new Error(error.message);
+        return { status: 'updated' as const, email };
       }
 
-      const appOrigin = ctx.req.headers.origin ?? 'https://thvdonordashboard.netlify.app';
-      const { error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, {
-        data: { full_name: displayName },
-        redirectTo: appOrigin,
+      const { error } = await supabase.auth.admin.createUser({
+        email,
+        password: input.password,
+        email_confirm: true,
+        user_metadata: { full_name: displayName },
       });
-      if (inviteError) throw new Error(inviteError.message);
-      const { error: updateError } = await (supabase
-        .from('allowed_team_emails') as any)
-        .update({ invited_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-        .eq('email', email);
-      if (updateError) throw new Error(updateError.message);
-      return { status: 'invited' as const, email };
+      if (error) throw new Error(error.message);
+      return { status: 'created' as const, email };
+    }),
+
+    setPassword: adminProcedure.input(z.object({
+      email: z.string().email(),
+      password: z.string().min(14, 'Use a password with at least 14 characters.').max(128),
+    })).mutation(async ({ input }) => {
+      const email = normalizeTeamEmail(input.email);
+      const supabase = getSupabaseServerClient();
+      const { data, error: listError } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
+      if (listError) throw new Error(listError.message);
+      const member = (data.users ?? []).find(user => normalizeTeamEmail(user.email ?? '') === email);
+      if (!member) throw new Error('Create this approved member account before setting a password.');
+      const { error } = await supabase.auth.admin.updateUserById(member.id, { password: input.password, email_confirm: true });
+      if (error) throw new Error(error.message);
+      return { success: true } as const;
     }),
 
     update: adminProcedure.input(z.object({
