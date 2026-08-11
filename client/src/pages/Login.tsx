@@ -3,9 +3,9 @@
 // Magic link UX simulation: shows a confirmation message after email entry
 
 import { useState } from 'react';
-import { useDashboard } from '@/contexts/DashboardContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { supabase } from '@/lib/supabase';
 
 const ALLOWED_EMAILS = [
   'liz@thehumblevillage.org',
@@ -22,20 +22,24 @@ const ALLOWED_EMAILS = [
 ];
 
 export default function Login() {
-  const { login } = useDashboard();
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const normalized = email.trim().toLowerCase();
     if (!normalized) { setError('Please enter your email address.'); return; }
-    // In v1: any email gets access (team will know the URL)
-    // For production: integrate Netlify Identity or Supabase magic link
+    if (!ALLOWED_EMAILS.includes(normalized)) {
+      setError('This dashboard is restricted to approved Humble Village team emails.');
+      return;
+    }
+    const { error: signInError } = await supabase.auth.signInWithOtp({
+      email: normalized,
+      options: { emailRedirectTo: window.location.origin, shouldCreateUser: true },
+    });
+    if (signInError) { setError(signInError.message); return; }
     setSent(true);
-    // Auto-login after 1.5s to simulate magic link click
-    setTimeout(() => login(normalized), 1500);
   };
 
   return (
@@ -44,7 +48,7 @@ export default function Login() {
         {/* Logo */}
         <div className="flex justify-center mb-8">
           <img
-            src="/manus-storage/thv-logo_68790765.svg"
+            src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663520822653/JvzxqlMoFdDNLuKe.svg"
             alt="The Humble Village"
             className="w-20 h-20"
           />
@@ -84,8 +88,8 @@ export default function Login() {
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </div>
-            <p className="font-display text-xl" style={{ color: 'oklch(0.22 0.018 55)' }}>Signing you in…</p>
-            <p className="text-sm" style={{ color: 'oklch(0.52 0.022 65)' }}>Redirecting to the dashboard.</p>
+            <p className="font-display text-xl" style={{ color: 'oklch(0.22 0.018 55)' }}>Check your email</p>
+            <p className="text-sm" style={{ color: 'oklch(0.52 0.022 65)' }}>Select the secure sign-in link to open the dashboard.</p>
           </div>
         )}
 

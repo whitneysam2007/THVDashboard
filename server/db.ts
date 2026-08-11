@@ -1,351 +1,211 @@
-import { eq, desc } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
-import {
-  InsertUser, users,
-  donors, donorActivities, donorDonations, donorTasks,
-  trips, tripAttendees, initiatives,
-} from "../drizzle/schema";
-import { ENV } from './_core/env';
-import { taskRowId, taskSlugFromRowId } from '../shared/taskKeys';
+import type { InsertUser } from '../drizzle/schema';
 import { nextOutstandingManualTask } from '../shared/manualTasks';
+import { taskRowId, taskSlugFromRowId } from '../shared/taskKeys';
+import { getSupabaseServerClient } from './supabase';
 
-let _db: ReturnType<typeof drizzle> | null = null;
+type InsertRow = Record<string, unknown>;
+const db = () => getSupabaseServerClient() as any;
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
+const clean = <T extends Record<string, unknown>>(value: T): T =>
+  Object.fromEntries(Object.entries(value).filter(([, field]) => field !== undefined)) as T;
+
+const assertSuccess = (result: { error?: { message: string } | null }) => {
+  if (result.error) throw new Error(result.error.message);
+  return result;
+};
+
 export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
-    try {
-      _db = drizzle(process.env.DATABASE_URL);
-    } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
-      _db = null;
-    }
-  }
-  return _db;
+  return db();
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {
-  if (!user.openId) {
-    throw new Error("User openId is required for upsert");
-  }
-
-  const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot upsert user: database not available");
-    return;
-  }
-
-  try {
-    const values: InsertUser = {
-      openId: user.openId,
-    };
-    const updateSet: Record<string, unknown> = {};
-
-    const textFields = ["name", "email", "loginMethod"] as const;
-    type TextField = (typeof textFields)[number];
-
-    const assignNullable = (field: TextField) => {
-      const value = user[field];
-      if (value === undefined) return;
-      const normalized = value ?? null;
-      values[field] = normalized;
-      updateSet[field] = normalized;
-    };
-
-    textFields.forEach(assignNullable);
-
-    if (user.lastSignedIn !== undefined) {
-      values.lastSignedIn = user.lastSignedIn;
-      updateSet.lastSignedIn = user.lastSignedIn;
-    }
-    if (user.role !== undefined) {
-      values.role = user.role;
-      updateSet.role = user.role;
-    } else if (user.openId === ENV.ownerOpenId) {
-      values.role = 'admin';
-      updateSet.role = 'admin';
-    }
-
-    if (!values.lastSignedIn) {
-      values.lastSignedIn = new Date();
-    }
-
-    if (Object.keys(updateSet).length === 0) {
-      updateSet.lastSignedIn = new Date();
-    }
-
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
-      set: updateSet,
-    });
-  } catch (error) {
-    console.error("[Database] Failed to upsert user:", error);
-    throw error;
-  }
+  if (!user.openId) throw new Error('User openId is required for upsert');
+  const values = clean({
+    openId: user.openId,
+    name: user.name ?? null,
+    email: user.email ?? null,
+    loginMethod: user.loginMethod ?? null,
+    role: user.role ?? 'user',
+    lastSignedIn: user.lastSignedIn ?? new Date().toISOString(),
+  });
+  assertSuccess(await db().from('users').upsert(values, { onConflict: 'openId' }));
 }
 
 export async function getUserByOpenId(openId: string) {
-  const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot get user: database not available");
-    return undefined;
-  }
-
-  const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
-
-  return result.length > 0 ? result[0] : undefined;
+  const result = await db().from('users').select('*').eq('openId', openId).maybeSingle();
+  assertSuccess(result);
+  return result.data ?? undefined;
 }
 
-// ─── Donors ───────────────────────────────────────────────────────────────────
-
 export async function getAllDonors() {
-  const db = await getDb();
-  if (!db) return [];
-  const [donorRows, donationRows, taskRows] = await Promise.all([
-    db.select().from(donors).orderBy(desc(donors.createdAt)),
-    db.select({ donorId: donorDonations.donorId, date: donorDonations.date, amountCents: donorDonations.amountCents }).from(donorDonations),
-    db.select({ id: donorTasks.id, donorId: donorTasks.donorId, label: donorTasks.label, dueDate: donorTasks.dueDate, completedDate: donorTasks.completedDate }).from(donorTasks),
+  const [donorResult, donationResult, taskResult] = await Promise.all([
+    db().from('donors').select('*').order('createdAt', { ascending: false }),
+    db().from('donor_donations').select('donorId,date,amountCents'),
+    db().from('donor_tasks').select('id,donorId,label,dueDate,completedDate,kind'),
   ]);
+  assertSuccess(donorResult); assertSuccess(donationResult); assertSuccess(taskResult);
 
-  // The dashboard list intentionally avoids returning every donation record. It
-  // does, however, need an exact amount for the current calendar-year summary.
   const currentYear = new Date().getFullYear();
-  const yearPrefix = `${currentYear}-`;
   const totalsByDonor = new Map<string, number>();
-  for (const donation of donationRows) {
-    if (donation.date.startsWith(yearPrefix)) {
-      totalsByDonor.set(
-        donation.donorId,
-        (totalsByDonor.get(donation.donorId) ?? 0) + Number(donation.amountCents ?? 0),
-      );
+  for (const donation of donationResult.data ?? []) {
+    if (String(donation.date).startsWith(`${currentYear}-`)) {
+      totalsByDonor.set(donation.donorId, (totalsByDonor.get(donation.donorId) ?? 0) + Number(donation.amountCents ?? 0));
     }
   }
-
-  const manualTasksByDonor = new Map<string, typeof taskRows>();
-  for (const task of taskRows) {
-    const donorTasks = manualTasksByDonor.get(task.donorId) ?? [];
-    donorTasks.push(task);
-    manualTasksByDonor.set(task.donorId, donorTasks);
+  const tasksByDonor = new Map<string, any[]>();
+  for (const task of taskResult.data ?? []) {
+    const tasks = tasksByDonor.get(task.donorId) ?? [];
+    tasks.push(task);
+    tasksByDonor.set(task.donorId, tasks);
   }
-
-  return donorRows.map(donor => ({
+  return (donorResult.data ?? []).map((donor: any) => ({
     ...donor,
     currentYearDonatedCents: totalsByDonor.get(donor.id) ?? 0,
-    nextManualTask: nextOutstandingManualTask(manualTasksByDonor.get(donor.id) ?? []),
+    nextManualTask: nextOutstandingManualTask(tasksByDonor.get(donor.id) ?? []),
   }));
 }
 
 export async function getDonorById(id: string) {
-  const db = await getDb();
-  if (!db) return null;
-  const rows = await db.select().from(donors).where(eq(donors.id, id)).limit(1);
-  return rows[0] ?? null;
+  const result = await db().from('donors').select('*').eq('id', id).maybeSingle();
+  assertSuccess(result);
+  return result.data ?? null;
 }
 
-export async function insertDonor(data: typeof donors.$inferInsert) {
-  const db = await getDb();
-  if (!db) throw new Error("DB unavailable");
-  await db.insert(donors).values(data);
+export async function insertDonor(data: InsertRow) {
+  assertSuccess(await db().from('donors').insert(clean(data)));
 }
 
-export async function updateDonorById(id: string, data: Partial<typeof donors.$inferInsert>) {
-  const db = await getDb();
-  if (!db) throw new Error("DB unavailable");
-  await db.update(donors).set(data).where(eq(donors.id, id));
+export async function updateDonorById(id: string, data: InsertRow) {
+  assertSuccess(await db().from('donors').update(clean(data)).eq('id', id));
 }
 
 export async function deleteDonorById(id: string) {
-  const db = await getDb();
-  if (!db) throw new Error("DB unavailable");
-  await db.delete(donorActivities).where(eq(donorActivities.donorId, id));
-  await db.delete(donorDonations).where(eq(donorDonations.donorId, id));
-  await db.delete(donorTasks).where(eq(donorTasks.donorId, id));
-  await db.delete(donors).where(eq(donors.id, id));
+  assertSuccess(await db().from('donors').delete().eq('id', id));
 }
-
-// ─── Activities ───────────────────────────────────────────────────────────────
 
 export async function getActivitiesForDonor(donorId: string) {
-  const db = await getDb();
-  if (!db) return [];
-  return db.select().from(donorActivities).where(eq(donorActivities.donorId, donorId)).orderBy(desc(donorActivities.date));
+  const result = await db().from('donor_activities').select('*').eq('donorId', donorId).order('date', { ascending: false });
+  assertSuccess(result);
+  return result.data ?? [];
 }
 
-export async function insertActivity(data: typeof donorActivities.$inferInsert) {
-  const db = await getDb();
-  if (!db) throw new Error("DB unavailable");
-  await db.insert(donorActivities).values(data);
+export async function insertActivity(data: InsertRow) {
+  assertSuccess(await db().from('donor_activities').insert(clean(data)));
 }
 
-export async function updateActivity(id: string, data: { note?: string; date?: string; author?: string }) {
-  const db = await getDb();
-  if (!db) throw new Error("DB unavailable");
-  await db.update(donorActivities).set(data).where(eq(donorActivities.id, id));
+export async function updateActivity(id: string, data: InsertRow) {
+  assertSuccess(await db().from('donor_activities').update(clean(data)).eq('id', id));
 }
 
 export async function deleteActivity(id: string) {
-  const db = await getDb();
-  if (!db) throw new Error("DB unavailable");
-  await db.delete(donorActivities).where(eq(donorActivities.id, id));
+  assertSuccess(await db().from('donor_activities').delete().eq('id', id));
 }
 
-// ─── Donations ────────────────────────────────────────────────────────────────
+export async function recalculateLastContactDate(donorId: string) {
+  const result = await db().from('donor_activities').select('date').eq('donorId', donorId).order('date', { ascending: false }).limit(1);
+  assertSuccess(result);
+  const latest = result.data?.[0]?.date ?? null;
+  await updateDonorById(donorId, { lastContactDate: latest });
+}
 
 export async function getDonationsForDonor(donorId: string) {
-  const db = await getDb();
-  if (!db) return [];
-  return db.select().from(donorDonations).where(eq(donorDonations.donorId, donorId)).orderBy(desc(donorDonations.date));
+  const result = await db().from('donor_donations').select('*').eq('donorId', donorId).order('date', { ascending: false });
+  assertSuccess(result);
+  return result.data ?? [];
 }
 
 export async function recalculateDonorTotal(donorId: string) {
-  const db = await getDb();
-  if (!db) return;
-  const rows = await db.select().from(donorDonations).where(eq(donorDonations.donorId, donorId));
-  const total = rows.reduce((sum, r) => sum + (r.amountCents ?? 0), 0);
-  await db.update(donors).set({ totalDonatedCents: total } as any).where(eq(donors.id, donorId));
+  const result = await db().from('donor_donations').select('amountCents').eq('donorId', donorId);
+  assertSuccess(result);
+  const total = (result.data ?? []).reduce((sum: number, donation: any) => sum + Number(donation.amountCents ?? 0), 0);
+  await updateDonorById(donorId, { totalDonatedCents: total });
 }
 
-export async function insertDonation(data: typeof donorDonations.$inferInsert) {
-  const db = await getDb();
-  if (!db) throw new Error("DB unavailable");
-  await db.insert(donorDonations).values(data);
+export async function insertDonation(data: InsertRow) {
+  assertSuccess(await db().from('donor_donations').insert(clean(data)));
 }
 
 export async function deleteDonation(id: string) {
-  const db = await getDb();
-  if (!db) throw new Error("DB unavailable");
-  await db.delete(donorDonations).where(eq(donorDonations.id, id));
+  assertSuccess(await db().from('donor_donations').delete().eq('id', id));
 }
-
-// ─── Tasks ────────────────────────────────────────────────────────────────────
 
 export async function getTasksForDonor(donorId: string) {
-  const db = await getDb();
-  if (!db) return [];
-  const rows = await db.select().from(donorTasks).where(eq(donorTasks.donorId, donorId));
-  // Expose the bare slug to the client so it matches generateAutoTasks() ids,
-  // while the DB keeps the donor-scoped primary key.
-  return rows.map(r => ({ ...r, id: taskSlugFromRowId(donorId, r.id) }));
+  const result = await db().from('donor_tasks').select('*').eq('donorId', donorId);
+  assertSuccess(result);
+  return (result.data ?? []).map((task: any) => ({ ...task, id: taskSlugFromRowId(donorId, task.id) }));
 }
 
-export async function upsertTask(data: typeof donorTasks.$inferInsert) {
-  const db = await getDb();
-  if (!db) throw new Error("DB unavailable");
-  // Scope the primary key by donor so two donors can independently complete the
-  // same auto-generated task without overwriting each other's row.
-  const row = { ...data, id: taskRowId(data.donorId, data.id) };
-  await db.insert(donorTasks).values(row).onDuplicateKeyUpdate({
-    set: {
-      donorId: row.donorId,
-      label: row.label,
-      dueDate: row.dueDate,
-      completedDate: row.completedDate ?? null,
-      completedBy: row.completedBy ?? null,
-    },
-  });
+export async function upsertTask(data: InsertRow) {
+  const row = { ...data, id: taskRowId(String(data.donorId), String(data.id)) };
+  assertSuccess(await db().from('donor_tasks').upsert(clean(row), { onConflict: 'id' }));
 }
 
 export async function deleteTask(id: string, donorId?: string) {
-  const db = await getDb();
-  if (!db) throw new Error("DB unavailable");
-  // Accept either a bare slug (when donorId is supplied) or an already-scoped key.
   const rowId = donorId ? taskRowId(donorId, id) : id;
-  await db.delete(donorTasks).where(eq(donorTasks.id, rowId));
+  assertSuccess(await db().from('donor_tasks').delete().eq('id', rowId));
 }
 
 export async function getAllTasks() {
-  const db = await getDb();
-  if (!db) return [];
-  const rows = await db
-    .select({
-      id: donorTasks.id,
-      donorId: donorTasks.donorId,
-      kind: donorTasks.kind,
-      label: donorTasks.label,
-      dueDate: donorTasks.dueDate,
-      completedDate: donorTasks.completedDate,
-      completedBy: donorTasks.completedBy,
-      donorName: donors.name,
-    })
-    .from(donorTasks)
-    .leftJoin(donors, eq(donorTasks.donorId, donors.id))
-    .orderBy(donorTasks.dueDate);
-  // Return the bare slug so the client can match against generateAutoTasks() ids.
-  return rows.map(r => ({ ...r, id: taskSlugFromRowId(r.donorId, r.id) }));
+  const result = await db().from('donor_tasks').select('id,donorId,kind,label,dueDate,completedDate,completedBy,donors(name)');
+  assertSuccess(result);
+  return (result.data ?? []).map((task: any) => ({
+    ...task,
+    id: taskSlugFromRowId(task.donorId, task.id),
+    donorName: task.donors?.name ?? '',
+    donors: undefined,
+  }));
 }
-
-// ─── Trips ────────────────────────────────────────────────────────────────────
 
 export async function getAllTrips() {
-  const db = await getDb();
-  if (!db) return [];
-  return db.select().from(trips).orderBy(desc(trips.startDate));
+  const result = await db().from('trips').select('*').order('startDate', { ascending: false });
+  assertSuccess(result);
+  return result.data ?? [];
 }
 
-export async function insertTrip(data: typeof trips.$inferInsert) {
-  const db = await getDb();
-  if (!db) throw new Error("DB unavailable");
-  await db.insert(trips).values(data);
+export async function insertTrip(data: InsertRow) {
+  assertSuccess(await db().from('trips').insert(clean(data)));
 }
 
-export async function updateTripById(id: string, data: Partial<typeof trips.$inferInsert>) {
-  const db = await getDb();
-  if (!db) throw new Error("DB unavailable");
-  await db.update(trips).set(data).where(eq(trips.id, id));
+export async function updateTripById(id: string, data: InsertRow) {
+  assertSuccess(await db().from('trips').update(clean(data)).eq('id', id));
 }
 
 export async function deleteTripById(id: string) {
-  const db = await getDb();
-  if (!db) throw new Error("DB unavailable");
-  await db.delete(tripAttendees).where(eq(tripAttendees.tripId, id));
-  await db.delete(trips).where(eq(trips.id, id));
+  assertSuccess(await db().from('trips').delete().eq('id', id));
 }
 
 export async function getAttendeesForTrip(tripId: string) {
-  const db = await getDb();
-  if (!db) return [];
-  return db.select().from(tripAttendees).where(eq(tripAttendees.tripId, tripId));
+  const result = await db().from('trip_attendees').select('*').eq('tripId', tripId);
+  assertSuccess(result);
+  return result.data ?? [];
 }
 
-export async function insertTripAttendee(data: typeof tripAttendees.$inferInsert) {
-  const db = await getDb();
-  if (!db) throw new Error("DB unavailable");
-  await db.insert(tripAttendees).values(data);
+export async function insertTripAttendee(data: InsertRow) {
+  assertSuccess(await db().from('trip_attendees').insert(clean(data)));
 }
 
-export async function updateTripAttendee(id: string, data: Partial<typeof tripAttendees.$inferInsert>) {
-  const db = await getDb();
-  if (!db) return;
-  await db.update(tripAttendees).set(data).where(eq(tripAttendees.id, id));
+export async function updateTripAttendee(id: string, data: InsertRow) {
+  assertSuccess(await db().from('trip_attendees').update(clean(data)).eq('id', id));
 }
 
 export async function deleteTripAttendee(id: string) {
-  const db = await getDb();
-  if (!db) throw new Error("DB unavailable");
-  await db.delete(tripAttendees).where(eq(tripAttendees.id, id));
+  assertSuccess(await db().from('trip_attendees').delete().eq('id', id));
 }
-
-// ─── Initiatives ──────────────────────────────────────────────────────────────
 
 export async function getAllInitiatives() {
-  const db = await getDb();
-  if (!db) return [];
-  return db.select().from(initiatives).orderBy(initiatives.startDate);
+  const result = await db().from('initiatives').select('*').order('startDate', { ascending: true });
+  assertSuccess(result);
+  return result.data ?? [];
 }
 
-export async function insertInitiative(data: typeof initiatives.$inferInsert) {
-  const db = await getDb();
-  if (!db) throw new Error("DB unavailable");
-  await db.insert(initiatives).values(data);
+export async function insertInitiative(data: InsertRow) {
+  assertSuccess(await db().from('initiatives').insert(clean(data)));
 }
 
-export async function updateInitiativeById(id: string, data: Partial<typeof initiatives.$inferInsert>) {
-  const db = await getDb();
-  if (!db) throw new Error("DB unavailable");
-  await db.update(initiatives).set(data).where(eq(initiatives.id, id));
+export async function updateInitiativeById(id: string, data: InsertRow) {
+  assertSuccess(await db().from('initiatives').update(clean(data)).eq('id', id));
 }
 
 export async function deleteInitiativeById(id: string) {
-  const db = await getDb();
-  if (!db) throw new Error("DB unavailable");
-  await db.delete(initiatives).where(eq(initiatives.id, id));
+  assertSuccess(await db().from('initiatives').delete().eq('id', id));
 }

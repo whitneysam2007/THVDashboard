@@ -3,8 +3,18 @@
   command = "pnpm run build"
   publish = "dist/public"
 
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+  external_node_modules = ["express"]
+
+[[redirects]]
+  from = "/api/trpc/*"
+  to = "/.netlify/functions/api/api/trpc/:splat"
+  status = 200
+  force = true
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-

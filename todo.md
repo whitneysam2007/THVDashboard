@@ -18,8 +18,14 @@
 - [x] Opened donor card: kept the missing-information message but used the muted contact-card icon and a gentle warm-yellow banner
 - [x] Donor modal: moved the edit form to immediately above Donation History
 - [x] Donor dashboard: matched the missing-information contact-card indicator to the opened card’s gentle warm-yellow color treatment
-- [ ] Push the latest checkpointed dashboard code to the connected THVdashboard GitHub repository
-- [ ] Resume and complete the GitHub push of the latest dashboard source to THVdashboard
+- [x] Pushed the latest checkpointed dashboard code to the connected THVdashboard GitHub repository
+- [x] Resumed and completed the GitHub push of the latest dashboard source to THVdashboard
+- [x] Audited Manus-specific dependencies before Netlify deployment
+- [x] Prepared the Supabase schema and safely migrated current donor, trip, task, and initiative data with exact count reconciliation
+- [x] Replaced Manus-only authentication with Supabase passwordless magic-link access for the approved team
+- [x] Added Netlify function routing, production environment-variable documentation, and deployment handoff instructions
+- [ ] Validate a production build and push the Netlify-ready code to THVDashboard
+- [x] Migrated the application from Manus MySQL/OAuth to the connected Supabase PostgreSQL database and magic-link authentication
 
 ## Active bug
 

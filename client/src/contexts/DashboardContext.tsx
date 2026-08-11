@@ -127,7 +127,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const deleteInitMut = trpc.initiatives.delete.useMutation({ onSuccess: () => utils.initiatives.list.invalidate() });
 
   // Build the store from query data
-  const donors: Donor[] = (donorsQuery.data ?? []).map(row => {
+  const donors: Donor[] = (donorsQuery.data ?? []).map((row: unknown) => {
     const d = mapDbDonor(row as Record<string, unknown>);
     d.status = computeDonorStatus(d);
     return d;
@@ -156,7 +156,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     notes: t.notes ?? undefined,
   }));
 
-  const initiatives: Initiative[] = (initiativesQuery.data ?? []).map(i => ({
+  const initiatives: Initiative[] = (initiativesQuery.data ?? []).map((i: any) => ({
     id: i.id,
     title: i.title,
     description: i.description ?? undefined,

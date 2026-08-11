@@ -1,7 +1,4 @@
 import { z } from "zod";
-import { COOKIE_NAME } from "@shared/const";
-import { getSessionCookieOptions } from "./_core/cookies";
-import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import {
   getAllDonors, getDonorById, insertDonor, updateDonorById, deleteDonorById,
@@ -10,19 +7,14 @@ import {
   getTasksForDonor, upsertTask, deleteTask, getAllTasks,
   getAllTrips, insertTrip, updateTripById, deleteTripById,
   getAttendeesForTrip, insertTripAttendee, updateTripAttendee, deleteTripAttendee,
-  getAllInitiatives, insertInitiative, updateInitiativeById, deleteInitiativeById,
+  getAllInitiatives, insertInitiative, updateInitiativeById, deleteInitiativeById, recalculateLastContactDate,
 } from "./db";
 import { nanoid } from "nanoid";
 
 export const appRouter = router({
-  system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
-    logout: publicProcedure.mutation(({ ctx }) => {
-      const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      return { success: true } as const;
-    }),
+    logout: publicProcedure.mutation(() => ({ success: true } as const)),
   }),
 
   donors: router({
@@ -80,23 +72,10 @@ export const appRouter = router({
       author: z.string(),
       note: z.string(),
     })).mutation(async ({ input }) => {
-    const id = nanoid();
-    await insertActivity({ ...input, id });
-    // Set lastContactDate to the most recent activity date for this donor
-    const db = await import('../server/db').then(m => m.getDb());
-    if (db) {
-      const { donorActivities } = await import('../drizzle/schema');
-      const { eq, desc } = await import('drizzle-orm');
-      const latest = await db.select({ date: donorActivities.date })
-        .from(donorActivities)
-        .where(eq(donorActivities.donorId, input.donorId))
-        .orderBy(desc(donorActivities.date))
-        .limit(1);
-      if (latest[0]) {
-        await updateDonorById(input.donorId, { lastContactDate: latest[0].date });
-      }
-    }
-    return { id };
+      const id = nanoid();
+      await insertActivity({ ...input, id });
+      await recalculateLastContactDate(input.donorId);
+      return { id };
     }),
 
     updateActivity: protectedProcedure.input(z.object({
@@ -160,10 +139,10 @@ export const appRouter = router({
   trips: router({
     list: protectedProcedure.query(async () => {
       const allTrips = await getAllTrips();
-      return Promise.all(allTrips.map(async t => ({
+      return Promise.all(allTrips.map(async (t: any) => ({
         ...t,
         teamMembers: JSON.parse(t.teamMembers || '[]') as string[],
-        attendees: (await getAttendeesForTrip(t.id)).map(a => ({
+        attendees: (await getAttendeesForTrip(t.id)).map((a: any) => ({
           ...a,
           skills: JSON.parse(a.skills || '[]') as string[],
         })),
