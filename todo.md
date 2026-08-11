@@ -55,10 +55,12 @@
 - [x] Replaced magic-link sign-in with owner-managed individual email-and-password authentication
 - [x] Set emary626@gmail.com as the initial dashboard owner password account
 - [x] Added owner controls to create accounts, set temporary passwords, and reset member passwords
-- [ ] Push and verify the tested password-authentication migration on GitHub and Netlify
+- [x] Pushed and verified the password-authentication migration on GitHub and Netlify (commit a16de5e)
 - [x] Fixed the stale isActiveAllowedMember runtime import/export error by restarting the development server and verified the password login screen loads
 - [x] End-to-end verified emary626@gmail.com owner password authentication and protected Team Access API access
 - [x] End-to-end verified owner account creation and password reset using a temporary test account, then removed it
+- [ ] Diagnose and restore Team Access visibility for Liz’s live dashboard account
+- [ ] Deploy the server-synchronized owner role fix and confirm Team Access is visible to Liz in production
 
 ## Active bug
 
