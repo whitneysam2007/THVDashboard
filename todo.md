@@ -40,6 +40,7 @@
 - [x] In Supabase, disabled public email sign-ups after deploying the invitation-first update
 - [ ] Optionally enable Cloudflare Turnstile in Supabase and set VITE_TURNSTILE_SITE_KEY in Netlify
 - [ ] Optionally set the recommended Supabase session lifetime and inactivity timeout
+- [ ] Diagnose and restore production dashboard data reads on the live Netlify deployment
 
 ## Active bug
 
