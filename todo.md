@@ -45,7 +45,7 @@
 - [x] Verified live Netlify serves the standalone logo/favicon assets and no longer depends on Manus-hosted logo URLs
 - [x] Promoted emary626@gmail.com to active dashboard owner access and verified the persisted Supabase role
 - [ ] Verify emary626@gmail.com sees Team Access in the live Netlify sidebar after a fresh login
-- [ ] Retire the magic-link recovery path after production password authentication and owner Team Access are verified live
+- [x] Retired the magic-link recovery path after production password authentication and owner Team Access were verified live
 - [x] Superseded custom SMTP setup after choosing owner-managed password authentication instead of email links
 - [x] Superseded SMTP provider selection after choosing owner-managed password authentication instead of email links
 - [x] Superseded Resend domain and Supabase SMTP configuration after choosing password authentication
@@ -59,8 +59,15 @@
 - [x] Fixed the stale isActiveAllowedMember runtime import/export error by restarting the development server and verified the password login screen loads
 - [x] End-to-end verified emary626@gmail.com owner password authentication and protected Team Access API access
 - [x] End-to-end verified owner account creation and password reset using a temporary test account, then removed it
-- [ ] Diagnose and restore Team Access visibility for Liz’s live dashboard account
-- [ ] Deploy the server-synchronized owner role fix and confirm Team Access is visible to Liz in production
+- [x] Diagnosed and restored Team Access visibility for Liz’s live dashboard account
+- [x] Deployed the server-synchronized owner role fix and confirmed Team Access is visible to Liz in production
+- [x] Trips: separated guest attendees into Possible and Confirmed roster sections using a status dropdown
+- [x] Trips: added Total trip number as team members plus confirmed guests, with a visible count breakdown
+- [ ] Diagnose and restore sandbox owner password login so Trips changes can be previewed before GitHub deployment
+- [ ] Add a development-only owner bypass for sandbox previews while preserving production password enforcement
+- [ ] Restore Liz’s live Netlify owner login before resuming sandbox preview or Trips changes
+- [ ] Reset and directly verify the live owner password flow for emary626@gmail.com without relying on unapproved organization email addresses
+- [ ] Fix the false inactive-access screen after valid emary626@gmail.com password sign-in on Netlify
 
 ## Active bug
 

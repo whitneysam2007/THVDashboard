@@ -2,10 +2,11 @@
 // Shows upcoming and past trips with team + donor attendees
 import { trpc } from '@/lib/trpc';
 
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { useDashboard } from '@/contexts/DashboardContext';
 import { formatDate, cn } from '@/lib/utils';
 import { Trip, TripAttendee } from '@/lib/types';
+import { summarizeTripRoster } from '@/lib/tripRoster';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -20,6 +21,7 @@ function AttendeeSection({ trip }: { trip: Trip }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', email: '', phone: '', skills: [] as string[], isTeen: false, speaksSpanish: false, confirmed: false, purchasedTicket: false, knowsAtTHV: [] as string[], knowsOther: '', notes: '' });
   const attendees = trip.attendees ?? [];
+  const roster = summarizeTripRoster(trip);
   const utils = trpc.useUtils();
 
   const addAttendeeMut = trpc.trips.addAttendee.useMutation({ onSuccess: () => utils.trips.list.invalidate() });
@@ -72,13 +74,36 @@ function AttendeeSection({ trip }: { trip: Trip }) {
 
   const handleDelete = async (id: string) => { await deleteAttendeeMut.mutateAsync({ id }); };
 
+  const handleStatusChange = async (attendee: TripAttendee, confirmed: boolean) => {
+    await updateAttendeeMut.mutateAsync({
+      id: attendee.id,
+      name: attendee.name,
+      email: attendee.email || undefined,
+      phone: attendee.phone || undefined,
+      skills: attendee.skills ?? [],
+      isTeen: attendee.isTeen,
+      speaksSpanish: attendee.speaksSpanish,
+      confirmed,
+      purchasedTicket: attendee.purchasedTicket,
+      knowsAtTHV: attendee.knowsAtTHV,
+      notes: attendee.notes || undefined,
+    });
+  };
+
   return (
     <div className="mt-4">
       <div className="flex items-center justify-between mb-2">
-        <p className="text-xs uppercase tracking-widest" style={{ color: 'oklch(0.62 0.012 65)' }}>Trip Attendees ({attendees.length})</p>
+        <p className="text-xs uppercase tracking-widest" style={{ color: 'oklch(0.62 0.012 65)' }}>Trip Attendees ({roster.confirmedGuests.length})</p>
         <button onClick={() => setShowAdd(!showAdd)} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded border" style={{ color: 'oklch(0.50 0.18 250)', borderColor: 'oklch(0.75 0.12 250)', background: 'oklch(0.96 0.04 250)' }}>
           <Plus size={10} /> Add attendee
         </button>
+      </div>
+      <div className="mb-3 rounded-lg border border-[oklch(0.82_0.022_75)] bg-[oklch(0.97_0.012_80)] px-3 py-2">
+        <p className="text-xs uppercase tracking-widest" style={{ color: 'oklch(0.52 0.022 65)' }}>Total trip number</p>
+        <div className="mt-0.5 flex items-baseline gap-2">
+          <span className="font-display text-2xl" style={{ color: 'oklch(0.22 0.018 55)' }}>{roster.totalTravelers}</span>
+          <span className="text-xs" style={{ color: 'oklch(0.52 0.022 65)' }}>{roster.teamCount} team · {roster.confirmedGuests.length} confirmed guests</span>
+        </div>
       </div>
       {showAdd && (
         <div className="mb-3 p-3 rounded-lg border border-[oklch(0.75_0.12_250)] bg-[oklch(0.97_0.03_250)] space-y-2">
@@ -115,9 +140,12 @@ function AttendeeSection({ trip }: { trip: Trip }) {
               <input type="checkbox" checked={form.speaksSpanish} onChange={e => setForm(f => ({ ...f, speaksSpanish: e.target.checked }))} />
               Speaks Spanish
             </label>
-            <label className="flex items-center gap-1.5 text-xs cursor-pointer" style={{ color: 'oklch(0.22 0.018 55)' }}>
-              <input type="checkbox" checked={form.confirmed} onChange={e => setForm(f => ({ ...f, confirmed: e.target.checked }))} />
-              Confirmed
+            <label className="flex items-center gap-1.5 text-xs" style={{ color: 'oklch(0.22 0.018 55)' }}>
+              Status
+              <select value={form.confirmed ? 'confirmed' : 'possible'} onChange={e => setForm(f => ({ ...f, confirmed: e.target.value === 'confirmed' }))} className="h-7 rounded border border-[oklch(0.80_0.018_75)] bg-white px-1">
+                <option value="possible">Possible</option>
+                <option value="confirmed">Confirmed</option>
+              </select>
             </label>
             <label className="flex items-center gap-1.5 text-xs cursor-pointer" style={{ color: 'oklch(0.22 0.018 55)' }}>
               <input type="checkbox" checked={form.purchasedTicket} onChange={e => setForm(f => ({ ...f, purchasedTicket: e.target.checked }))} />
@@ -149,14 +177,17 @@ function AttendeeSection({ trip }: { trip: Trip }) {
         <p className="text-xs italic" style={{ color: 'oklch(0.72 0.012 65)' }}>No attendees added yet.</p>
       )}
       <div className="space-y-2">
-        {attendees.map(a => (
-          <div key={a.id} className="rounded-lg border border-[oklch(0.88_0.018_75)] bg-white overflow-hidden">
+        {roster.confirmedGuests.length === 0 && <p className="text-xs italic" style={{ color: 'oklch(0.62 0.012 65)' }}>Confirmed (0) · No confirmed guests yet.</p>}
+        {[...roster.confirmedGuests, ...roster.possibleGuests].map((a, index) => (
+          <Fragment key={a.id}>
+            {index === 0 && roster.confirmedGuests.length > 0 && <p className="pt-1 text-xs uppercase tracking-widest" style={{ color: 'oklch(0.34 0.10 145)' }}>Confirmed ({roster.confirmedGuests.length})</p>}
+            {index === roster.confirmedGuests.length && <p className="pt-3 text-xs uppercase tracking-widest" style={{ color: 'oklch(0.48 0.04 345)' }}>Possible ({roster.possibleGuests.length})</p>}
+          <div className="rounded-lg border border-[oklch(0.88_0.018_75)] bg-white overflow-hidden">
             <div className="flex items-center justify-between px-3 py-2 cursor-pointer" onClick={() => setExpanded(expanded === a.id ? null : a.id)}>
               <div className="flex items-center gap-2 min-w-0">
                 <span className="text-sm font-medium truncate" style={{ color: 'oklch(0.22 0.018 55)' }}>{a.name}</span>
                 {a.isTeen && <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-[oklch(0.88_0.12_250)] text-[oklch(0.30_0.18_250)]">Teen</span>}
                 {a.speaksSpanish && <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-[oklch(0.88_0.12_145)] text-[oklch(0.28_0.12_145)]">ES</span>}
-                {a.confirmed && <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-[oklch(0.88_0.14_145)] text-[oklch(0.28_0.14_145)]">✓ Confirmed</span>}
                 {a.purchasedTicket && <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-[oklch(0.88_0.10_250)] text-[oklch(0.28_0.18_250)]">🎫 Ticket</span>}
                 {a.skills.length > 0 && (
                   <div className="flex gap-1 flex-wrap">
@@ -165,6 +196,17 @@ function AttendeeSection({ trip }: { trip: Trip }) {
                 )}
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
+                <select
+                  aria-label={`Status for ${a.name}`}
+                  value={a.confirmed ? 'confirmed' : 'possible'}
+                  onClick={e => e.stopPropagation()}
+                  onChange={e => { e.stopPropagation(); void handleStatusChange(a, e.target.value === 'confirmed'); }}
+                  className="h-6 rounded border border-[oklch(0.80_0.018_75)] bg-[oklch(0.985_0.008_80)] px-1 text-[10px]"
+                  style={{ color: a.confirmed ? 'oklch(0.34 0.10 145)' : 'oklch(0.48 0.04 345)' }}
+                >
+                  <option value="possible">Possible</option>
+                  <option value="confirmed">Confirmed</option>
+                </select>
                 <button onClick={e => { e.stopPropagation(); handleDelete(a.id); }} className="p-1 rounded hover:bg-red-50"><Trash2 size={11} style={{ color: 'oklch(0.55 0.20 27)' }} /></button>
                 {expanded === a.id ? <ChevronUp size={13} style={{ color: 'oklch(0.62 0.012 65)' }} /> : <ChevronDown size={13} style={{ color: 'oklch(0.62 0.012 65)' }} />}
               </div>
@@ -180,11 +222,15 @@ function AttendeeSection({ trip }: { trip: Trip }) {
                     </div>
                     <div><label className="text-xs mb-1 block" style={{ color: 'oklch(0.52 0.022 65)' }}>Skills</label><div className="flex flex-wrap gap-1.5">{SKILLS.map(s => <button key={s} type="button" onClick={() => toggleEditSkill(s)} className={`text-xs px-2 py-0.5 rounded-full border transition-colors ${editForm.skills.includes(s) ? 'bg-[oklch(0.22_0.018_55)] text-[oklch(0.96_0.008_75)] border-[oklch(0.22_0.018_55)]' : 'bg-white border-[oklch(0.84_0.018_75)] text-[oklch(0.52_0.022_65)]'}`}>{s}</button>)}</div></div>
                     <div className="flex flex-wrap gap-4">
-                      {[['isTeen','Teen'],['speaksSpanish','Speaks Spanish'],['confirmed','Confirmed'],['purchasedTicket','Purchased Ticket']].map(([key, label]) => (
+                      {[['isTeen','Teen'],['speaksSpanish','Speaks Spanish'],['purchasedTicket','Purchased Ticket']].map(([key, label]) => (
                         <label key={key} className="flex items-center gap-1.5 text-xs cursor-pointer" style={{ color: 'oklch(0.22 0.018 55)' }}>
                           <input type="checkbox" checked={(editForm as any)[key]} onChange={e => setEditForm(f => ({ ...f, [key]: e.target.checked }))} />{label}
                         </label>
                       ))}
+                      <label className="flex items-center gap-1.5 text-xs" style={{ color: 'oklch(0.22 0.018 55)' }}>
+                        Status
+                        <select value={editForm.confirmed ? 'confirmed' : 'possible'} onChange={e => setEditForm(f => ({ ...f, confirmed: e.target.value === 'confirmed' }))} className="h-7 rounded border border-[oklch(0.80_0.018_75)] bg-white px-1"><option value="possible">Possible</option><option value="confirmed">Confirmed</option></select>
+                      </label>
                     </div>
                     <div><label className="text-xs mb-1 block" style={{ color: 'oklch(0.52 0.022 65)' }}>Who do they know at THV?</label><div className="flex flex-wrap gap-1.5 mb-1.5">{TEAM_MEMBERS.map(m => <button key={m} type="button" onClick={() => toggleEditKnows(m)} className={`text-xs px-2 py-0.5 rounded-full border transition-colors ${editForm.knowsAtTHV.includes(m) ? 'bg-[oklch(0.50_0.18_250)] text-white border-[oklch(0.50_0.18_250)]' : 'bg-white border-[oklch(0.84_0.018_75)] text-[oklch(0.52_0.022_65)]'}`}>{m}</button>)}</div><Input value={editForm.knowsOther} onChange={e => setEditForm(f => ({ ...f, knowsOther: e.target.value }))} placeholder="Other (type a name)" className="text-sm h-8" /></div>
                     <div><label className="text-xs mb-0.5 block" style={{ color: 'oklch(0.52 0.022 65)' }}>Notes</label><Textarea value={editForm.notes} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} rows={2} className="text-sm" /></div>
@@ -203,7 +249,9 @@ function AttendeeSection({ trip }: { trip: Trip }) {
               </div>
             )}
           </div>
+          </Fragment>
         ))}
+        {roster.possibleGuests.length === 0 && attendees.length > 0 && <p className="text-xs italic" style={{ color: 'oklch(0.62 0.012 65)' }}>Possible (0) · No possible guests.</p>}
       </div>
     </div>
   );

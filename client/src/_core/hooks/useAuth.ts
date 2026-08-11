@@ -26,9 +26,15 @@ export function useAuth() {
 
   useEffect(() => {
     void hydrate();
-    const { data: listener } = supabase.auth.onAuthStateChange(() => { void hydrate(); void refetchProfile(); });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      // Let React re-render with the fresh session first. The enabled auth.me query
+      // will then fetch with its matching bearer token; eagerly refetching here can
+      // race the session write and return a false unauthenticated profile.
+      setAuthUser(session?.user ?? null);
+      setLoading(false);
+    });
     return () => listener.subscription.unsubscribe();
-  }, [hydrate, refetchProfile]);
+  }, [hydrate]);
 
   const logout = useCallback(async () => {
     await supabase.auth.signOut();

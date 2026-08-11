@@ -6,12 +6,12 @@ describe('Supabase team access hardening migration', () => {
     const { data, error } = await (getSupabaseServerClient()
       .from('allowed_team_emails') as any)
       .select('email, role, is_active, invited_at')
-      .eq('email', 'liz@thehumblevillage.org')
+      .eq('email', 'emary626@gmail.com')
       .maybeSingle();
 
     expect(error).toBeNull();
     expect(data).toMatchObject({
-      email: 'liz@thehumblevillage.org',
+      email: 'emary626@gmail.com',
       role: 'owner',
       is_active: true,
     });

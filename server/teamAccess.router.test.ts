@@ -20,8 +20,8 @@ function ownerContext(): TrpcContext {
   return {
     user: {
       openId: 'owner-test',
-      email: 'liz@thehumblevillage.org',
-      name: 'Liz',
+      email: 'emary626@gmail.com',
+      name: 'Emily',
       loginMethod: 'password',
       role: 'admin',
     },
@@ -52,7 +52,7 @@ describe('team access router', () => {
     const caller = appRouter.createCaller(ownerContext());
     const members = await caller.teamAccess.list();
     expect(members).toEqual(expect.arrayContaining([
-      expect.objectContaining({ email: 'liz@thehumblevillage.org', role: 'owner', isActive: true }),
+      expect.objectContaining({ email: 'emary626@gmail.com', role: 'owner', isActive: true }),
     ]));
   });
 });
