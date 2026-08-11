@@ -1,5 +1,7 @@
 import { z } from "zod";
-import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { adminProcedure, publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { getSupabaseServerClient } from "./supabase";
+import { canManageTeamMember, displayNameFromEmail, normalizeTeamEmail, type TeamRole } from "./accessControl";
 import {
   getAllDonors, getDonorById, insertDonor, updateDonorById, deleteDonorById,
   getActivitiesForDonor, insertActivity, updateActivity, deleteActivity,
@@ -11,10 +13,111 @@ import {
 } from "./db";
 import { nanoid } from "nanoid";
 
+type TeamAccessRow = {
+  email: string;
+  display_name: string;
+  role: TeamRole;
+  is_active: boolean;
+  created_at: string;
+  invited_at: string | null;
+  updated_at: string;
+};
+
 export const appRouter = router({
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(() => ({ success: true } as const)),
+  }),
+
+  teamAccess: router({
+    list: adminProcedure.query(async () => {
+      const supabase = getSupabaseServerClient();
+      const [allowedResult, authResult] = await Promise.all([
+        (supabase.from('allowed_team_emails') as any).select('email, display_name, role, is_active, created_at, invited_at, updated_at').order('created_at'),
+        supabase.auth.admin.listUsers({ page: 1, perPage: 1000 }),
+      ]);
+      if (allowedResult.error) throw new Error(allowedResult.error.message);
+      if (authResult.error) throw new Error(authResult.error.message);
+      const authByEmail = new Map(
+        (authResult.data.users ?? [])
+          .filter(user => Boolean(user.email))
+          .map(user => [normalizeTeamEmail(user.email!), user]),
+      );
+      return ((allowedResult.data ?? []) as TeamAccessRow[]).map(row => {
+        const authUser = authByEmail.get(normalizeTeamEmail(row.email));
+        return {
+          email: row.email,
+          displayName: row.display_name,
+          role: row.role as TeamRole,
+          isActive: row.is_active,
+          createdAt: row.created_at,
+          invitedAt: row.invited_at,
+          updatedAt: row.updated_at,
+          enrolled: Boolean(authUser?.email_confirmed_at),
+          lastSignInAt: authUser?.last_sign_in_at ?? null,
+        };
+      });
+    }),
+
+    invite: adminProcedure.input(z.object({
+      email: z.string().email(),
+      displayName: z.string().trim().min(1).max(100).optional(),
+    })).mutation(async ({ ctx, input }) => {
+      const email = normalizeTeamEmail(input.email);
+      const supabase = getSupabaseServerClient();
+      const displayName = input.displayName || displayNameFromEmail(email);
+      const { data: existingAuth, error: existingAuthError } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
+      if (existingAuthError) throw new Error(existingAuthError.message);
+      const alreadyEnrolled = (existingAuth.users ?? []).some(user => normalizeTeamEmail(user.email ?? '') === email && Boolean(user.email_confirmed_at));
+      const { error: allowlistError } = await (supabase
+        .from('allowed_team_emails') as any)
+        .upsert({ email, display_name: displayName, role: 'member', is_active: true, updated_at: new Date().toISOString() }, { onConflict: 'email' });
+      if (allowlistError) throw new Error(allowlistError.message);
+
+      if (alreadyEnrolled) {
+        return { status: 'reactivated' as const, email };
+      }
+
+      const appOrigin = ctx.req.headers.origin ?? 'https://thvdonordashboard.netlify.app';
+      const { error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, {
+        data: { full_name: displayName },
+        redirectTo: appOrigin,
+      });
+      if (inviteError) throw new Error(inviteError.message);
+      const { error: updateError } = await (supabase
+        .from('allowed_team_emails') as any)
+        .update({ invited_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .eq('email', email);
+      if (updateError) throw new Error(updateError.message);
+      return { status: 'invited' as const, email };
+    }),
+
+    update: adminProcedure.input(z.object({
+      email: z.string().email(),
+      displayName: z.string().trim().min(1).max(100).optional(),
+      isActive: z.boolean().optional(),
+    })).mutation(async ({ ctx, input }) => {
+      const email = normalizeTeamEmail(input.email);
+      if (input.isActive === false && !canManageTeamMember(ctx.user.email ?? '', email)) {
+        throw new Error('You cannot deactivate your own owner access.');
+      }
+      const data: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (input.displayName !== undefined) data.display_name = input.displayName;
+      if (input.isActive !== undefined) data.is_active = input.isActive;
+      const { error } = await (getSupabaseServerClient().from('allowed_team_emails') as any).update(data).eq('email', email);
+      if (error) throw new Error(error.message);
+      return { success: true } as const;
+    }),
+
+    remove: adminProcedure.input(z.object({ email: z.string().email() })).mutation(async ({ ctx, input }) => {
+      const email = normalizeTeamEmail(input.email);
+      if (!canManageTeamMember(ctx.user.email ?? '', email)) {
+        throw new Error('You cannot remove your own owner access.');
+      }
+      const { error } = await (getSupabaseServerClient().from('allowed_team_emails') as any).delete().eq('email', email);
+      if (error) throw new Error(error.message);
+      return { success: true } as const;
+    }),
   }),
 
   donors: router({

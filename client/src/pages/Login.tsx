@@ -1,44 +1,30 @@
 // THV Donor Dashboard — Login Page
-// Simple email gate: enter email → "logged in" (no real auth server needed for v1)
-// Magic link UX simulation: shows a confirmation message after email entry
+// Passwordless sign-in for existing, owner-invited Supabase accounts.
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/lib/supabase';
+import { Turnstile } from '@marsidev/react-turnstile';
 
-const ALLOWED_EMAILS = [
-  'liz@thehumblevillage.org',
-  'lauren@thehumblevillage.org',
-  'anna@thehumblevillage.org',
-  'brenley@thehumblevillage.org',
-  'kirstenbham@gmail.com',
-  'amydkerr@gmail.com',
-  'brenleyb@gmail.com',
-  'laurenfoulger@gmail.com',
-  'emilylfeatherstone@gmail.com',
-  'annaconnelly@gmail.com',
-  'emary626@gmail.com',
-];
+const turnstileSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
 
-export default function Login() {
+export default function Login({ accessRevoked = false }: { accessRevoked?: boolean }) {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const normalized = email.trim().toLowerCase();
     if (!normalized) { setError('Please enter your email address.'); return; }
-    if (!ALLOWED_EMAILS.includes(normalized)) {
-      setError('This dashboard is restricted to approved Humble Village team emails.');
-      return;
-    }
+    if (turnstileSiteKey && !captchaToken) { setError('Please complete the verification step.'); return; }
     const { error: signInError } = await supabase.auth.signInWithOtp({
       email: normalized,
-      options: { emailRedirectTo: window.location.origin, shouldCreateUser: true },
+      options: { emailRedirectTo: window.location.origin, shouldCreateUser: false, captchaToken: captchaToken ?? undefined },
     });
-    if (signInError) { setError(signInError.message); return; }
+    if (signInError) { setError('We could not send an access link. Please contact the dashboard owner if you need access.'); return; }
     setSent(true);
   };
 
@@ -61,6 +47,12 @@ export default function Login() {
           The Humble Village — Internal Dashboard
         </p>
 
+        {accessRevoked && (
+          <div className="mb-5 rounded-md border px-3 py-3 text-xs" style={{ background: 'oklch(0.97 0.05 92)', borderColor: 'oklch(0.83 0.10 92)', color: 'oklch(0.38 0.08 75)' }}>
+            Your dashboard access is not currently active. Please contact the dashboard owner if you believe this is an error.
+          </div>
+        )}
+
         {!sent ? (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -77,6 +69,14 @@ export default function Login() {
               />
               {error && <p className="text-xs mt-1 text-[oklch(0.45_0.20_27)]">{error}</p>}
             </div>
+            {turnstileSiteKey && (
+              <Turnstile
+                siteKey={turnstileSiteKey}
+                onSuccess={token => { setCaptchaToken(token); setError(''); }}
+                onExpire={() => setCaptchaToken(null)}
+                options={{ theme: 'light' }}
+              />
+            )}
             <Button type="submit" className="w-full" style={{ background: 'oklch(0.22 0.018 55)', color: 'oklch(0.96 0.008 75)' }}>
               Access Dashboard
             </Button>
@@ -89,7 +89,7 @@ export default function Login() {
               </svg>
             </div>
             <p className="font-display text-xl" style={{ color: 'oklch(0.22 0.018 55)' }}>Check your email</p>
-            <p className="text-sm" style={{ color: 'oklch(0.52 0.022 65)' }}>Select the secure sign-in link to open the dashboard.</p>
+            <p className="text-sm" style={{ color: 'oklch(0.52 0.022 65)' }}>Select the secure sign-in link to open the dashboard. If you are new to the team, ask the dashboard owner to send you an invitation first.</p>
           </div>
         )}
 

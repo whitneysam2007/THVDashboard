@@ -26,9 +26,19 @@ Set the following environment variables in **Netlify → Site configuration → 
 
 ## Supabase magic-link configuration
 
-In **Supabase → Authentication → URL Configuration**, set **Site URL** to the final Netlify domain and add that same URL to the permitted **Redirect URLs**. Add the custom domain there as well after it is connected. The login screen calls Supabase `signInWithOtp`, which sends an email link to the approved team addresses.
+In **Supabase → Authentication → URL Configuration**, the current production configuration is:
 
-The approved list is stored in the Supabase `allowed_team_emails` table and is enforced again by the server API after Supabase authenticates a user. The listed addresses include Liz, Lauren, Anna, Brenley, Emily, Amy, and Kirsten’s approved addresses. Unlisted users can request an email link, but cannot access dashboard data through the protected API.
+| Setting | Production value |
+|---|---|
+| Site URL | `https://thvdonordashboard.netlify.app` |
+| Redirect URL | `https://thvdonordashboard.netlify.app` |
+| Redirect URL pattern | `https://thvdonordashboard.netlify.app/**` |
+
+Add the custom domain in the same form after it is connected. The login screen calls Supabase `signInWithOtp`, which sends an email link to the approved team addresses. A fresh production magic link was verified on 2026-08-11 to return an approved user to an authenticated Netlify dashboard session.
+
+The approved list is stored in the Supabase `allowed_team_emails` table and is enforced again by the server API after Supabase authenticates a user. The listed addresses include Liz, Lauren, Anna, Brenley, Emily, Amy, and Kirsten’s approved addresses. The production login requests an existing account only; the owner provisions new access through the Team Access invitation workflow.
+
+For the owner-managed access workflow, invitation-only enrollment, optional CAPTCHA, and recommended session settings, follow [`TEAM_ACCESS_SECURITY.md`](./TEAM_ACCESS_SECURITY.md).
 
 ## Before inviting the team
 

@@ -1,5 +1,6 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import { getSupabaseServerClient } from '../supabase';
+import { isActiveAllowedMember, normalizeTeamEmail, type TeamRole } from '../accessControl';
 
 export type DashboardUser = {
   id?: number;
@@ -28,20 +29,25 @@ export async function createContext(
       const supabase = getSupabaseServerClient();
       const { data: authData, error: authError } = await supabase.auth.getUser(token);
       if (!authError && authData.user?.email) {
-        const email = authData.user.email.toLowerCase();
+        const email = normalizeTeamEmail(authData.user.email);
         const allowedResult = await supabase
           .from('allowed_team_emails')
-          .select('email, display_name')
+          .select('email, display_name, role, is_active')
           .eq('email', email)
           .maybeSingle();
-        const allowed = allowedResult.data as { email: string; display_name: string } | null;
-        if (!allowedResult.error && allowed) {
+        const allowed = allowedResult.data as {
+          email: string;
+          display_name: string;
+          role: TeamRole;
+          is_active: boolean;
+        } | null;
+        if (!allowedResult.error && isActiveAllowedMember(allowed)) {
           user = {
             openId: authData.user.id,
             email,
             name: authData.user.user_metadata?.full_name ?? allowed.display_name,
             loginMethod: 'magic-link',
-            role: email === 'liz@thehumblevillage.org' ? 'admin' : 'user',
+            role: allowed.role === 'owner' ? 'admin' : 'user',
           };
         }
       }

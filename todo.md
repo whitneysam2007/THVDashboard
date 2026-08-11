@@ -24,8 +24,22 @@
 - [x] Prepared the Supabase schema and safely migrated current donor, trip, task, and initiative data with exact count reconciliation
 - [x] Replaced Manus-only authentication with Supabase passwordless magic-link access for the approved team
 - [x] Added Netlify function routing, production environment-variable documentation, and deployment handoff instructions
-- [ ] Validate a production build and push the Netlify-ready code to THVDashboard
+- [x] Validated the production build and pushed the Netlify-ready code to THVDashboard (commit 114119a)
 - [x] Migrated the application from Manus MySQL/OAuth to the connected Supabase PostgreSQL database and magic-link authentication
+- [x] Investigated and fixed the blank screen at the live Netlify deployment URL by supplying required Supabase build variables
+- [x] Fixed the invalid Supabase magic-link route through correct Site URL and redirect URL configuration
+- [x] Verified a fresh production magic link returns an approved user to an authenticated Netlify dashboard session
+- [x] Recorded the exact production Supabase Site URL and approved redirect URL patterns in the deployment handoff
+- [x] Audited Supabase allowlist, RLS, and current session controls for production security gaps
+- [x] Added owner-only Team Access management for approved email addresses and active/disabled status
+- [x] Changed the application to invitation-first enrollment and inactive-account blocking before dashboard access
+- [x] Added CAPTCHA configuration readiness and documented Supabase session hardening settings
+- [x] Validate the signed-in Supabase user against the server allowlist before rendering the dashboard shell
+- [x] Sign out revoked or unapproved users and show a clear access-revoked message
+- [x] Added regression tests for inactive and unapproved users attempting dashboard access
+- [x] In Supabase, disabled public email sign-ups after deploying the invitation-first update
+- [ ] Optionally enable Cloudflare Turnstile in Supabase and set VITE_TURNSTILE_SITE_KEY in Netlify
+- [ ] Optionally set the recommended Supabase session lifetime and inactivity timeout
 
 ## Active bug
 

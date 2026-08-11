@@ -6,7 +6,7 @@ import { Link, useLocation } from 'wouter';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import {
-  Users, Plane, BarChart2, CheckSquare, LogOut, Menu, X, ChevronRight
+  Users, Plane, BarChart2, CheckSquare, LogOut, Menu, X, ChevronRight, ShieldCheck
 } from 'lucide-react';
 
 const NAV = [
@@ -23,6 +23,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const userName = user?.name ?? user?.email?.split('@')[0] ?? 'Team';
   const displayName = userName.charAt(0).toUpperCase() + userName.slice(1);
+  const navigation = user?.role === 'admin' ? [...NAV, { href: '/team-access', label: 'Team Access', icon: ShieldCheck }] : NAV;
 
   return (
     <div className="flex min-h-screen" style={{ background: 'oklch(0.965 0.012 80)' }}>
@@ -54,7 +55,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Nav */}
         <nav className="flex-1 px-3 py-6 space-y-1">
-          {NAV.map(({ href, label, icon: Icon }) => {
+          {navigation.map(({ href, label, icon: Icon }) => {
             const active = location === href;
             return (
               <Link key={href} href={href}>
