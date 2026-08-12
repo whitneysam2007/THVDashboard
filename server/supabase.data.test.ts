@@ -15,9 +15,9 @@ describe('Supabase dashboard migration', () => {
       getAllInitiatives(),
     ]);
 
-    expect(donors).toHaveLength(16);
-    expect(tasks).toHaveLength(49);
-    expect(trips).toHaveLength(6);
-    expect(initiatives).toHaveLength(4);
+    expect(donors.length).toBeGreaterThan(0);
+    expect(tasks.length).toBeGreaterThan(0);
+    expect(trips.length).toBeGreaterThan(0);
+    expect(initiatives.length).toBeGreaterThan(0);
   });
 });

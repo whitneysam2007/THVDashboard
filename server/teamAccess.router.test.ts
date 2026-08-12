@@ -21,7 +21,7 @@ function ownerContext(): TrpcContext {
     user: {
       openId: 'owner-test',
       email: 'emary626@gmail.com',
-      name: 'Emily',
+      name: 'Liz',
       loginMethod: 'password',
       role: 'admin',
     },

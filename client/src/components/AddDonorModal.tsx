@@ -30,10 +30,7 @@ export default function AddDonorModal({ onClose }: AddDonorModalProps) {
     cadenceDescription: '',
     recurringAmount: '',
     recurringFrequency: 'yearly' as 'monthly' | 'yearly',
-    naruCircle: false,
-    donorTrip: false,
     taxReceiptSent: false,
-    newsletterSubscribed: false,
     manuallyInactive: false,
     referredBy: '',
     notes: '',
@@ -58,10 +55,10 @@ export default function AddDonorModal({ onClose }: AddDonorModalProps) {
       cadenceDescription: form.cadenceDescription,
       recurringAmount: form.type === 'recurring' && form.recurringAmount ? Number(form.recurringAmount) : undefined,
       recurringFrequency: form.type === 'recurring' ? form.recurringFrequency : undefined,
-      naruCircle: form.naruCircle,
-      donorTrip: form.donorTrip,
+      naruCircle: false,
+      donorTrip: false,
       taxReceiptSent: form.taxReceiptSent,
-      newsletterSubscribed: form.newsletterSubscribed,
+      newsletterSubscribed: false,
       manuallyInactive: false,
       completedTasks: [],
       referredBy: form.referredBy || undefined,
@@ -156,21 +153,6 @@ export default function AddDonorModal({ onClose }: AddDonorModalProps) {
               <label className="text-xs mb-1 block uppercase tracking-widest" style={{ color: 'oklch(0.52 0.022 65)' }}>Cadence Description</label>
               <Input value={form.cadenceDescription} onChange={e => set('cadenceDescription', e.target.value)} placeholder="e.g., Photos + stories every 3 months" />
             </div>
-          </div>
-
-          <div className="flex gap-4 flex-wrap">
-            <label className="flex items-center gap-2 cursor-pointer text-sm" style={{ color: 'oklch(0.22 0.018 55)' }}>
-              <input type="checkbox" checked={form.naruCircle} onChange={e => set('naruCircle', e.target.checked)} />
-              Narú Circle
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer text-sm" style={{ color: 'oklch(0.22 0.018 55)' }}>
-              <input type="checkbox" checked={form.donorTrip} onChange={e => set('donorTrip', e.target.checked)} />
-              Donor Trip
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer text-sm" style={{ color: 'oklch(0.22 0.018 55)' }}>
-              <input type="checkbox" checked={form.newsletterSubscribed} onChange={e => set('newsletterSubscribed', e.target.checked)} />
-              Added to Newsletter
-            </label>
           </div>
 
           <div>

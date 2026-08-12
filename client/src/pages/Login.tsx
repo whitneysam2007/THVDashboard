@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/PasswordInput';
 import { supabase } from '@/lib/supabase';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { passwordLoginErrorMessage } from '@/lib/authErrors';
@@ -74,8 +75,7 @@ export default function Login({ accessRevoked = false }: { accessRevoked?: boole
               <label className="block text-xs uppercase tracking-widest mb-2" style={{ color: 'oklch(0.52 0.022 65)' }}>
                 Password
               </label>
-              <Input
-                type="password"
+              <PasswordInput
                 value={password}
                 onChange={e => { setPassword(e.target.value); setError(''); }}
                 placeholder="Your password"

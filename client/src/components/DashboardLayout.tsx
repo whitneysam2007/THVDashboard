@@ -6,8 +6,9 @@ import { Link, useLocation } from 'wouter';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import {
-  Users, Plane, BarChart2, CheckSquare, LogOut, Menu, X, ChevronRight, ShieldCheck
+  Users, Plane, BarChart2, CheckSquare, LogOut, Menu, X, ChevronRight, ShieldCheck, KeyRound
 } from 'lucide-react';
+import { ChangePasswordDialog } from '@/components/ChangePasswordDialog';
 
 const NAV = [
   { href: '/', label: 'Donors', icon: Users },
@@ -20,6 +21,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { user, logout } = useAuth();
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
 
   const userName = user?.name ?? user?.email?.split('@')[0] ?? 'Team';
   const displayName = userName.charAt(0).toUpperCase() + userName.slice(1);
@@ -92,6 +94,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           </div>
           <button
+            onClick={() => setPasswordDialogOpen(true)}
+            className="flex items-center gap-2 w-full px-3 py-2 rounded text-xs transition-colors hover:bg-[oklch(0.28_0.018_55)]"
+            style={{ color: 'oklch(0.60 0.025 65)' }}
+          >
+            <KeyRound size={13} /> Change password
+          </button>
+          <button
             onClick={logout}
             className="flex items-center gap-2 w-full px-3 py-2 rounded text-xs transition-colors hover:bg-[oklch(0.28_0.018_55)]"
             style={{ color: 'oklch(0.60 0.025 65)' }}
@@ -116,6 +125,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {children}
         </main>
       </div>
+      <ChangePasswordDialog email={user?.email ?? null} open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen} />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { ShieldCheck, UserPlus, UserRoundCheck, UserRoundX, Trash2, KeyRound, Clock3, Loader2 } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { useAuth } from '@/_core/hooks/useAuth';
+import { PasswordInput } from '@/components/PasswordInput';
 
 function formatTimestamp(value: string | null) {
   if (!value) return 'Not yet';
@@ -74,7 +75,7 @@ export default function TeamAccess() {
         <form onSubmit={createAccount} className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_auto]">
           <input value={displayName} onChange={event => setDisplayName(event.target.value)} placeholder="Name (optional)" className="h-10 rounded-md border px-3 text-sm" style={{ borderColor: 'oklch(0.78 0.02 70)', background: 'oklch(0.99 0.006 80)' }} />
           <input required type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="name@example.org" className="h-10 rounded-md border px-3 text-sm" style={{ borderColor: 'oklch(0.78 0.02 70)', background: 'oklch(0.99 0.006 80)' }} />
-          <input required type="password" minLength={14} value={password} onChange={event => setPassword(event.target.value)} placeholder="Temporary password (14+ characters)" className="h-10 rounded-md border px-3 text-sm" style={{ borderColor: 'oklch(0.78 0.02 70)', background: 'oklch(0.99 0.006 80)' }} />
+          <PasswordInput required minLength={14} value={password} onChange={event => setPassword(event.target.value)} placeholder="Temporary password (14+ characters)" className="h-10 rounded-md border px-3 text-sm" style={{ borderColor: 'oklch(0.78 0.02 70)', background: 'oklch(0.99 0.006 80)' }} />
           <button disabled={createAccountMutation.isPending} className="h-10 rounded-md px-4 text-sm font-semibold disabled:opacity-60" style={{ background: 'oklch(0.22 0.018 55)', color: 'oklch(0.96 0.008 75)' }}>
             {createAccountMutation.isPending ? 'Creating…' : <span className="inline-flex items-center gap-2"><UserPlus size={15} /> Create account</span>}
           </button>
@@ -121,7 +122,7 @@ export default function TeamAccess() {
                   )}
                   {resetTarget === member.email && (
                     <form onSubmit={event => { event.preventDefault(); setPasswordMutation.mutate({ email: member.email, password: resetPassword }); }} className="lg:col-span-2 flex flex-col gap-2 rounded-md border p-3 sm:flex-row sm:items-center" style={{ borderColor: 'oklch(0.82 0.03 70)', background: 'oklch(0.975 0.012 80)' }}>
-                      <input required type="password" minLength={14} value={resetPassword} onChange={event => setResetPassword(event.target.value)} placeholder="New temporary password (14+ characters)" className="h-9 min-w-0 flex-1 rounded-md border px-3 text-sm" style={{ borderColor: 'oklch(0.78 0.02 70)', background: 'oklch(0.99 0.006 80)' }} />
+                      <PasswordInput required minLength={14} value={resetPassword} onChange={event => setResetPassword(event.target.value)} placeholder="New temporary password (14+ characters)" containerClassName="min-w-0 flex-1" className="h-9 w-full rounded-md border px-3 text-sm" style={{ borderColor: 'oklch(0.78 0.02 70)', background: 'oklch(0.99 0.006 80)' }} />
                       <button disabled={setPasswordMutation.isPending} className="h-9 rounded-md px-3 text-xs font-semibold disabled:opacity-60" style={{ background: 'oklch(0.22 0.018 55)', color: 'oklch(0.96 0.008 75)' }}>{setPasswordMutation.isPending ? 'Saving…' : 'Save password'}</button>
                       <button type="button" onClick={() => { setResetTarget(null); setResetPassword(''); }} className="h-9 rounded-md px-3 text-xs font-semibold" style={{ color: 'oklch(0.42 0.02 60)' }}>Cancel</button>
                     </form>

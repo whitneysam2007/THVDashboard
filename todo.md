@@ -44,7 +44,7 @@
 - [x] Pushed THV logo and favicon assets to GitHub and confirmed the Netlify deployment completed
 - [x] Verified live Netlify serves the standalone logo/favicon assets and no longer depends on Manus-hosted logo URLs
 - [x] Promoted emary626@gmail.com to active dashboard owner access and verified the persisted Supabase role
-- [ ] Verify emary626@gmail.com sees Team Access in the live Netlify sidebar after a fresh login
+- [x] Verify emary626@gmail.com sees Team Access in the live Netlify sidebar after a fresh login
 - [x] Retired the magic-link recovery path after production password authentication and owner Team Access were verified live
 - [x] Superseded custom SMTP setup after choosing owner-managed password authentication instead of email links
 - [x] Superseded SMTP provider selection after choosing owner-managed password authentication instead of email links
@@ -63,11 +63,20 @@
 - [x] Deployed the server-synchronized owner role fix and confirmed Team Access is visible to Liz in production
 - [x] Trips: separated guest attendees into Possible and Confirmed roster sections using a status dropdown
 - [x] Trips: added Total trip number as team members plus confirmed guests, with a visible count breakdown
-- [ ] Diagnose and restore sandbox owner password login so Trips changes can be previewed before GitHub deployment
-- [ ] Add a development-only owner bypass for sandbox previews while preserving production password enforcement
-- [ ] Restore Liz’s live Netlify owner login before resuming sandbox preview or Trips changes
-- [ ] Reset and directly verify the live owner password flow for emary626@gmail.com without relying on unapproved organization email addresses
-- [ ] Fix the false inactive-access screen after valid emary626@gmail.com password sign-in on Netlify
+- [x] Trips: replace the attendee Purchased Ticket checkbox with one dropdown-driven status and show Purchased Ticket, Confirmed, and Possible roster sections
+- [x] Sandbox preview: disable dashboard write controls and visibly enforce read-only review mode
+- [x] Authentication: remove the sandbox preview bypass and keep emary626@gmail.com password sign-in as the sole sandbox and production access path
+- [x] Team Access: change the emary626@gmail.com owner display name to Liz in Supabase and authentication metadata
+- [x] Team Access: provide concise owner and team instructions for creating and using individual passwords
+- [x] Password fields: add accessible eye toggles to reveal or hide passwords while typing on sign-in and Team Access forms
+- [x] Account menu: allow signed-in users to securely change their own password
+- [x] New donor: remove Naru Circle, Donor Trip, and Added to Newsletter controls until after the donor card is created
+- [ ] GitHub: push the completed sandbox dashboard updates to the connected THVDashboard repository
+- [x] Replace sandbox password login with a development-only read-only dashboard preview for reviewing Trips changes before GitHub deployment
+- [x] Add a development-only read-only bypass for sandbox previews while preserving production password enforcement
+- [x] Restore Liz’s live Netlify owner login before resuming sandbox preview or Trips changes
+- [x] Reset and directly verify the live owner password flow for emary626@gmail.com without relying on unapproved organization email addresses
+- [x] Fix the false inactive-access screen after valid emary626@gmail.com password sign-in on Netlify
 
 ## Active bug
 
