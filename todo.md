@@ -73,7 +73,7 @@
 - [x] New donor: remove Naru Circle, Donor Trip, and Added to Newsletter controls until after the donor card is created
 - [x] GitHub: push the completed sandbox dashboard updates to the connected THVDashboard repository
 - [x] Recurring donations: generate due monthly donation-history entries from each donor start date and show annualized expected commitments
-- [ ] Deployment: push the verified recurring donation automation to GitHub for Netlify deployment
+- [x] Deployment: push the verified recurring donation automation to GitHub for Netlify deployment
 - [x] Replace sandbox password login with a development-only read-only dashboard preview for reviewing Trips changes before GitHub deployment
 - [x] Add a development-only read-only bypass for sandbox previews while preserving production password enforcement
 - [x] Restore Liz’s live Netlify owner login before resuming sandbox preview or Trips changes
