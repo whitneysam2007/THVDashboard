@@ -495,7 +495,7 @@ export default function DonorModal({ donor: donorProp, onClose }: DonorModalProp
             <div className="flex items-center gap-2 p-3 rounded-lg bg-[oklch(0.965_0.012_80)] border border-[oklch(0.84_0.018_75)]">
               <RefreshCw size={13} style={{ color: 'oklch(0.62 0.012 65)' }} />
               <span className="text-sm" style={{ color: 'oklch(0.40 0.018 55)' }}>
-                Recurring gift: <strong>{formatCurrency(donor.recurringAmount)}</strong> {donor.recurringFrequency ?? 'yearly'}
+                Recurring gift: <strong>{formatCurrency(donor.recurringAmount)} × {donor.recurringFrequency === 'monthly' ? '12' : '1'} = {formatCurrency(donor.recurringFrequency === 'monthly' ? donor.recurringAmount * 12 : donor.recurringAmount)}</strong> expected annually
               </span>
             </div>
           )}

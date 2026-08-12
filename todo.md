@@ -71,7 +71,9 @@
 - [x] Password fields: add accessible eye toggles to reveal or hide passwords while typing on sign-in and Team Access forms
 - [x] Account menu: allow signed-in users to securely change their own password
 - [x] New donor: remove Naru Circle, Donor Trip, and Added to Newsletter controls until after the donor card is created
-- [ ] GitHub: push the completed sandbox dashboard updates to the connected THVDashboard repository
+- [x] GitHub: push the completed sandbox dashboard updates to the connected THVDashboard repository
+- [x] Recurring donations: generate due monthly donation-history entries from each donor start date and show annualized expected commitments
+- [ ] Deployment: push the verified recurring donation automation to GitHub for Netlify deployment
 - [x] Replace sandbox password login with a development-only read-only dashboard preview for reviewing Trips changes before GitHub deployment
 - [x] Add a development-only read-only bypass for sandbox previews while preserving production password enforcement
 - [x] Restore Liz’s live Netlify owner login before resuming sandbox preview or Trips changes

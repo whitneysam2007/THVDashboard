@@ -2,6 +2,7 @@ import type { InsertUser } from '../drizzle/schema';
 import { nextOutstandingManualTask } from '../shared/manualTasks';
 import { taskRowId, taskSlugFromRowId } from '../shared/taskKeys';
 import { getSupabaseServerClient } from './supabase';
+import { AUTOMATED_RECURRING_NOTE, dueMonthlyDonationDates, mountainDateToday, recurringDonationId } from './recurringDonations';
 
 type InsertRow = Record<string, unknown>;
 const db = () => getSupabaseServerClient() as any;
@@ -38,6 +39,7 @@ export async function getUserByOpenId(openId: string) {
 }
 
 export async function getAllDonors() {
+  await syncRecurringMonthlyDonations();
   const [donorResult, donationResult, taskResult] = await Promise.all([
     db().from('donors').select('*').order('createdAt', { ascending: false }),
     db().from('donor_donations').select('donorId,date,amountCents'),
@@ -123,6 +125,48 @@ export async function recalculateDonorTotal(donorId: string) {
 
 export async function insertDonation(data: InsertRow) {
   assertSuccess(await db().from('donor_donations').insert(clean(data)));
+}
+
+/**
+ * Backfill each due monthly recurring donation once. This is safe to run on every
+ * donor-list request and from the scheduled Netlify function because records use
+ * deterministic IDs and existing donation dates are never duplicated.
+ */
+export async function syncRecurringMonthlyDonations(throughDate = mountainDateToday()) {
+  const donorResult = await db().from('donors').select('id,startDate,type,recurringAmount,recurringFrequency');
+  assertSuccess(donorResult);
+  const monthlyDonors = (donorResult.data ?? []).filter((donor: any) =>
+    donor.type === 'recurring'
+    && donor.recurringFrequency === 'monthly'
+    && Number(donor.recurringAmount) > 0
+    && typeof donor.startDate === 'string',
+  );
+  if (monthlyDonors.length === 0) return { created: 0, donors: 0 };
+
+  const donorIds = monthlyDonors.map((donor: any) => donor.id);
+  const donationResult = await db().from('donor_donations').select('donorId,date').in('donorId', donorIds);
+  assertSuccess(donationResult);
+  const existingDates = new Set((donationResult.data ?? []).map((donation: any) => `${donation.donorId}:${donation.date}`));
+  const rows: InsertRow[] = [];
+
+  for (const donor of monthlyDonors) {
+    for (const date of dueMonthlyDonationDates(donor.startDate, throughDate)) {
+      if (existingDates.has(`${donor.id}:${date}`)) continue;
+      rows.push({
+        id: recurringDonationId(donor.id, date),
+        donorId: donor.id,
+        date,
+        amountCents: Math.round(Number(donor.recurringAmount) * 100),
+        note: AUTOMATED_RECURRING_NOTE,
+      });
+    }
+  }
+
+  if (rows.length === 0) return { created: 0, donors: monthlyDonors.length };
+  const insertResult = await db().from('donor_donations').upsert(rows, { onConflict: 'id', ignoreDuplicates: true });
+  assertSuccess(insertResult);
+  await Promise.all(Array.from(new Set(rows.map(row => String(row.donorId)))).map(recalculateDonorTotal));
+  return { created: rows.length, donors: monthlyDonors.length };
 }
 
 export async function deleteDonation(id: string) {
