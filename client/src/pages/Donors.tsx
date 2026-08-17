@@ -10,7 +10,7 @@ import {
 } from '@/lib/utils';
 import { donorTypeLabel } from '@/lib/utils';
 import { donationsLastYears } from '@/lib/utils';
-import { matchesRecurringDonorFilter } from '@/lib/donorFilters';
+import { matchesPotentialDonorFilter, matchesPotentiallyRecurringDonorFilter, matchesRecurringDonorFilter } from '@/lib/donorFilters';
 import { DonorStatus } from '@/lib/types';
 import StatusBadge from '@/components/StatusBadge';
 import DonorModal from '@/components/DonorModal';
@@ -54,8 +54,8 @@ export default function Donors() {
       d.name.toLowerCase().includes(search.toLowerCase()) ||
       d.contactName.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === 'all'
-      || (statusFilter === 'potential' ? d.type === 'potential' : d.status === (statusFilter as DonorStatus));
-    const matchPotential = !filterPotential || d.type === 'potential';
+      || (statusFilter === 'potential' ? matchesPotentialDonorFilter(d, true) : d.status === (statusFilter as DonorStatus));
+    const matchPotential = matchesPotentiallyRecurringDonorFilter(d, filterPotential);
     const matchRecurring = matchesRecurringDonorFilter(d, filterRecurring);
     const matchNaru = !filterNaru || d.naruCircle;
     const matchTrip = !filterTrip || d.donorTrip;
@@ -168,6 +168,19 @@ export default function Donors() {
         >
           <RefreshCw size={10} />
           Recurring donors
+        </button>
+        <button
+          onClick={() => setFilterPotential(!filterPotential)}
+          aria-pressed={filterPotential}
+          className={cn(
+            'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
+            filterPotential
+              ? 'bg-[oklch(0.88_0.022_72)] border-[oklch(0.70_0.022_72)] text-[oklch(0.28_0.018_55)]'
+              : 'border-[oklch(0.84_0.018_75)] text-[oklch(0.52_0.022_65)] hover:border-[oklch(0.60_0.018_65)]'
+          )}
+        >
+          <RefreshCw size={10} />
+          Potentially Recurring
         </button>
         <button
           onClick={() => setFilterUpcoming(!filterUpcoming)}
