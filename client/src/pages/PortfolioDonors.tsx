@@ -7,8 +7,9 @@ import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { ChevronRight, DollarSign, Mail, MapPin, Plus, RefreshCw, Send, X } from 'lucide-react';
+import { ChevronRight, DollarSign, Mail, MapPin, MessageCircle, Plus, RefreshCw, Send, X } from 'lucide-react';
 import ThankYouLetterControl from '@/components/ThankYouLetterControl';
+import { useAuth } from '@/_core/hooks/useAuth';
 
 type PortfolioDonorsProps = { portfolio: Exclude<DonorPortfolio, 'major'> };
 
@@ -44,7 +45,8 @@ function Card({ donor, onOpen, portfolio }: { donor: Donor; onOpen: () => void; 
 }
 
 function DonorDetail({ donor, portfolio, onClose }: { donor: Donor; portfolio: PortfolioDonorsProps['portfolio']; onClose: () => void }) {
-  const { updateDonor, addDonation } = useDashboard();
+  const { updateDonor, addDonation, addActivity } = useDashboard();
+  const { user } = useAuth();
   const utils = trpc.useUtils();
   const detailQuery = trpc.donors.getWithDetails.useQuery({ id: donor.id });
   const [adding, setAdding] = useState(false);
@@ -52,8 +54,11 @@ function DonorDetail({ donor, portfolio, onClose }: { donor: Donor; portfolio: P
   const [date, setDate] = useState(TODAY());
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
+  const [interactionNote, setInteractionNote] = useState('');
+  const [savingInteraction, setSavingInteraction] = useState(false);
 
   const transactions = detailQuery.data?.donations ?? [];
+  const interactions = [...(detailQuery.data?.activities ?? [])].sort((a: any, b: any) => String(b.date).localeCompare(String(a.date)));
   const handleAddTransaction = async () => {
     const parsed = Number(amount);
     if (!Number.isFinite(parsed) || parsed <= 0) return;
@@ -68,6 +73,20 @@ function DonorDetail({ donor, portfolio, onClose }: { donor: Donor; portfolio: P
   const moveToMajor = async () => {
     await updateDonor(donor.id, { portfolio: 'major', cadenceDays: 90, cadenceDescription: 'every 3 months' });
     onClose();
+  };
+
+  const handleAddInteraction = async () => {
+    if (!interactionNote.trim()) return;
+    setSavingInteraction(true);
+    try {
+      await addActivity(donor.id, {
+        date: TODAY(),
+        author: user?.name ?? user?.email ?? 'THV team',
+        note: interactionNote.trim(),
+      });
+      await utils.donors.getWithDetails.invalidate({ id: donor.id });
+      setInteractionNote('');
+    } finally { setSavingInteraction(false); }
   };
 
 
@@ -116,6 +135,24 @@ function DonorDetail({ donor, portfolio, onClose }: { donor: Donor; portfolio: P
           <p className="text-sm mt-1" style={{ color: 'oklch(0.50 0.022 65)' }}>Move this donor when their annual giving reaches more than $5,000. Contact details, transactions, notes, and annual thank-you history remain intact.</p>
           <Button size="sm" className="mt-3" onClick={() => void moveToMajor()}><Send size={14} /> Move to Major Donors</Button>
         </div>}
+
+        <div className="mt-8 border-t border-[oklch(0.84_0.018_75)] pt-6">
+          <div className="flex items-start gap-3">
+            <MessageCircle size={19} className="mt-0.5 text-[oklch(0.50_0.18_250)]" />
+            <div>
+              <h2 className="font-display text-2xl" style={{ color: 'oklch(0.22 0.018 55)' }}>Donor Journey Log</h2>
+              <p className="mt-1 text-xs" style={{ color: 'oklch(0.52 0.022 65)' }}>Capture relationship notes here. This log does not create tasks, deadlines, or communication cadence.</p>
+            </div>
+          </div>
+          <div className="mt-4 rounded-lg border border-[oklch(0.84_0.018_75)] p-4">
+            <Textarea value={interactionNote} onChange={event => setInteractionNote(event.target.value)} placeholder="Log an interaction, call, meeting, or relationship note…" />
+            <div className="mt-3 flex justify-end"><Button size="sm" disabled={savingInteraction || !interactionNote.trim()} onClick={() => void handleAddInteraction()}><Plus size={14} /> Add to journey</Button></div>
+          </div>
+          <div className="mt-4 space-y-3">
+            {interactions.map((interaction: any) => <div key={interaction.id} className="rounded-lg border border-[oklch(0.90_0.012_76)] px-4 py-3"><div className="flex items-center justify-between gap-3 text-xs" style={{ color: 'oklch(0.52 0.022 65)' }}><span>{formatDate(interaction.date)}</span><span>{interaction.author}</span></div><p className="mt-1.5 text-sm" style={{ color: 'oklch(0.28 0.018 55)' }}>{interaction.note}</p></div>)}
+            {interactions.length === 0 && <p className="py-4 text-sm" style={{ color: 'oklch(0.52 0.022 65)' }}>No journey notes yet.</p>}
+          </div>
+        </div>
       </section>
     </div>
   );
