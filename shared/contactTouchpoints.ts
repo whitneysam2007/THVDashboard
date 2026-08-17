@@ -4,7 +4,7 @@ export type TaskTouchpoint = { id: string; completedDate?: string | null };
 /**
  * A donor cadence resets only after a logged interaction or a manually-created
  * blue task is completed. Automated onboarding and recurring tasks are excluded,
- * except Brenley's annual September thank-you, which is intentional stewardship.
+ * except a completed current-year handwritten thank-you letter.
  */
 export function latestEligibleTouchpointDate(
   activities: ActivityTouchpoint[],
@@ -13,7 +13,7 @@ export function latestEligibleTouchpointDate(
   const dates = [
     ...activities.map(activity => activity.date),
     ...tasks
-      .filter(task => (task.id.startsWith('manual-') || task.id.startsWith('brenley-annual-thank-you-') || task.id.includes('_brenley-annual-thank-you-')) && Boolean(task.completedDate))
+      .filter(task => (task.id.startsWith('manual-') || task.id.startsWith('thank-you-letter-') || task.id.includes('_thank-you-letter-')) && Boolean(task.completedDate))
       .map(task => task.completedDate!),
   ].filter(date => /^\d{4}-\d{2}-\d{2}$/.test(date));
 

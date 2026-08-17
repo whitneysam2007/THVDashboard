@@ -88,7 +88,11 @@
 - [x] Import: create Monthly Giving cards from approved Zefy screenshot or CSV mappings without inventing missing contact details or transaction data
 - [x] Kirks: logged the June 1, 2026 donor-packet contact interaction so the donor card recalculates from that active touchpoint
 - [x] Donors 500–5K import: used only the approved Donors $500-$4,999 worksheet to import nine validated donor records, transactions, contact details, and thank-you history
-- [ ] Deployment: push the completed donor-tier tabs and validated Monthly Giving and Donors 500–5K imports to GitHub for Netlify deployment
+- [x] Deployment: push the completed donor-tier tabs and validated Monthly Giving and Donors 500–5K imports to GitHub for Netlify deployment
+- [x] Deployment verification: owner confirmed the live Donors 500–5K and Monthly Giving tabs display the expected 9 and 13 imported cards after commit fff46d4
+- [x] Thank-you letters: replaced annual Brenley deadline tasks with a reversible blue-to-green 2026 letter indicator shown only for donors with a 2026 donation across all tiers
+- [x] New donor journey: removed the automatic welcome thank-you note so only acknowledgment/tax letter and newsletter tasks appear
+- [ ] Deployment: push the approved thank-you letter indicators and simplified donor journey to GitHub for Netlify deployment
 - [x] Deployment: push the reviewed donor journey and Recurring donors filter updates to GitHub for Netlify deployment
 - [x] Replace sandbox password login with a development-only read-only dashboard preview for reviewing Trips changes before GitHub deployment
 - [x] Add a development-only read-only bypass for sandbox previews while preserving production password enforcement

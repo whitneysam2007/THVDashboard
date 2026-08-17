@@ -62,6 +62,8 @@ export interface Donor {
   // Derived from the database for the donor-list dashboard header; not persisted
   // on the donor record itself.
   currentYearDonated?: number;
+  // Derived from the donor task log for the current year’s handwritten thank-you card.
+  thankYouLetterForCurrentYear?: { completedDate: string; completedBy?: string };
   // Derived for the donor card: earliest open manually added task, if any.
   nextManualTask?: Pick<TaskEntry, 'id' | 'label' | 'dueDate'>;
   notes?: string;

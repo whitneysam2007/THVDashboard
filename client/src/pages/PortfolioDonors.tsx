@@ -7,7 +7,8 @@ import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { CalendarHeart, Check, ChevronRight, DollarSign, Mail, MapPin, Plus, RefreshCw, Send, X } from 'lucide-react';
+import { ChevronRight, DollarSign, Mail, MapPin, Plus, RefreshCw, Send, X } from 'lucide-react';
+import ThankYouLetterControl from '@/components/ThankYouLetterControl';
 
 type PortfolioDonorsProps = { portfolio: Exclude<DonorPortfolio, 'major'> };
 
@@ -37,7 +38,7 @@ function Card({ donor, onOpen, portfolio }: { donor: Donor; onOpen: () => void; 
           <p className="font-semibold mt-0.5" style={{ color: 'oklch(0.22 0.018 55)' }}>{formatCurrency(portfolio === 'monthly-giving' ? expectedAnnual : totalDonated(donor))}</p>
         </div>
       </div>
-      <p className="mt-4 text-xs flex items-center gap-1.5" style={{ color: 'oklch(0.50 0.16 350)' }}><CalendarHeart size={13} />Annual Brenley thank-you due September 1</p>
+      {donor.currentYearDonated && donor.currentYearDonated > 0 && <p className="mt-4 text-xs flex items-center gap-1.5" style={{ color: donor.thankYouLetterForCurrentYear ? 'oklch(0.42 0.13 145)' : 'oklch(0.50 0.18 250)' }}><Mail size={13} />{donor.thankYouLetterForCurrentYear ? `Thank-you card sent ${formatDate(donor.thankYouLetterForCurrentYear.completedDate)}` : 'Thank-you card not yet marked sent'}</p>}
     </button>
   );
 }
@@ -46,17 +47,13 @@ function DonorDetail({ donor, portfolio, onClose }: { donor: Donor; portfolio: P
   const { updateDonor, addDonation } = useDashboard();
   const utils = trpc.useUtils();
   const detailQuery = trpc.donors.getWithDetails.useQuery({ id: donor.id });
-  const annualThankYouMut = trpc.donors.upsertTask.useMutation();
   const [adding, setAdding] = useState(false);
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(TODAY());
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
-  const [thankYouDate, setThankYouDate] = useState(TODAY());
 
   const transactions = detailQuery.data?.donations ?? [];
-  const annualTaskId = `brenley-annual-thank-you-${new Date().getFullYear()}`;
-  const completedAnnualThankYou = detailQuery.data?.tasks?.find((task: any) => task.id === annualTaskId);
   const handleAddTransaction = async () => {
     const parsed = Number(amount);
     if (!Number.isFinite(parsed) || parsed <= 0) return;
@@ -73,24 +70,6 @@ function DonorDetail({ donor, portfolio, onClose }: { donor: Donor; portfolio: P
     onClose();
   };
 
-  const markAnnualThankYou = async () => {
-    setSaving(true);
-    try {
-      await annualThankYouMut.mutateAsync({
-        id: annualTaskId,
-        donorId: donor.id,
-        kind: 'recurring',
-        label: 'Brenley annual thank-you note',
-        dueDate: `${new Date().getFullYear()}-09-01`,
-        completedDate: thankYouDate,
-        completedBy: 'Brenley',
-      });
-      await Promise.all([
-        utils.donors.getWithDetails.invalidate({ id: donor.id }),
-        utils.donors.list.invalidate(),
-      ]);
-    } finally { setSaving(false); }
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose}>
@@ -114,13 +93,7 @@ function DonorDetail({ donor, portfolio, onClose }: { donor: Donor; portfolio: P
           <p className="text-xs mt-1" style={{ color: 'oklch(0.40 0.11 145)' }}>Monthly transactions are created automatically from the donor’s start date.</p>
         </div>}
 
-        <div className="mt-6 rounded-lg p-4 border border-[oklch(0.77_0.10_70)] bg-[oklch(0.97_0.035_75)]">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div><p className="text-xs uppercase tracking-[0.14em]" style={{ color: 'oklch(0.50 0.16 350)' }}>Annual stewardship</p><h2 className="font-display text-xl mt-1" style={{ color: 'oklch(0.22 0.018 55)' }}>Brenley annual thank-you note</h2><p className="text-xs mt-1" style={{ color: 'oklch(0.52 0.022 65)' }}>Due September 1. Completion counts as a contact touchpoint for Next Contact.</p></div>
-            <p className="text-sm font-medium" style={{ color: completedAnnualThankYou ? 'oklch(0.42 0.13 145)' : 'oklch(0.52 0.16 350)' }}>{completedAnnualThankYou ? `Sent ${formatDate(completedAnnualThankYou.completedDate)}` : 'Not yet sent'}</p>
-          </div>
-          <div className="mt-3 flex flex-col sm:flex-row gap-2"><Input className="sm:max-w-[180px]" type="date" value={completedAnnualThankYou?.completedDate ?? thankYouDate} onChange={event => setThankYouDate(event.target.value)} /><Button size="sm" disabled={saving} onClick={() => void markAnnualThankYou()}><Check size={14} /> {completedAnnualThankYou ? 'Update sent date' : 'Mark sent'}</Button></div>
-        </div>
+        <div className="mt-6"><ThankYouLetterControl donorId={donor.id} tasks={(detailQuery.data?.tasks ?? []).map((task: any) => ({ id: task.id, kind: task.kind, label: task.label, dueDate: task.dueDate, completedDate: task.completedDate ?? undefined, completedBy: task.completedBy ?? undefined }))} hasCurrentYearDonation={transactions.some((transaction: any) => String(transaction.date).startsWith(`${new Date().getFullYear()}-`))} /></div>
 
         <div className="mt-7">
           <div className="flex items-center justify-between gap-3">
@@ -182,11 +155,11 @@ export default function PortfolioDonors({ portfolio }: PortfolioDonorsProps) {
   const title = donorPortfolioLabel(portfolio);
   const description = portfolio === 'monthly-giving'
     ? 'All monthly donors, regardless of dollar amount. Monthly commitments support the expected recurring total on the primary dashboard.'
-    : 'Annual non-monthly donors whose calendar-year gifts are between $500 and $5,000. Track transactions and Brenley’s annual stewardship.';
+    : 'Annual non-monthly donors whose calendar-year gifts are between $500 and $5,000. Track transactions and handwritten thank-you cards.';
 
   return <div className="p-6 lg:p-8 max-w-[1300px]">
     <header className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-8"><div><p className="text-xs uppercase tracking-[0.16em]" style={{ color: 'oklch(0.50 0.16 350)' }}>Donor portfolio</p><h1 className="font-display text-4xl mt-1" style={{ color: 'oklch(0.22 0.018 55)' }}>{title}</h1><p className="max-w-2xl text-sm mt-2" style={{ color: 'oklch(0.52 0.022 65)' }}>{description}</p></div><Button onClick={() => setAdding(true)}><Plus size={15} /> Add donor</Button></header>
-    <div className="grid sm:grid-cols-2 gap-4 mb-7"><div className="rounded-lg p-4 border bg-[oklch(0.985_0.008_80)] border-[oklch(0.84_0.018_75)]"><p className="text-xs uppercase tracking-[0.14em]" style={{ color: 'oklch(0.60 0.018 65)' }}>Donors tracked</p><p className="font-display text-3xl mt-1">{donors.length}</p></div><div className="rounded-lg p-4 border bg-[oklch(0.985_0.008_80)] border-[oklch(0.84_0.018_75)]"><p className="text-xs uppercase tracking-[0.14em]" style={{ color: 'oklch(0.60 0.018_65)' }}>{portfolio === 'monthly-giving' ? 'Expected annual giving' : 'September annual thank-you'}</p><p className="font-display text-3xl mt-1">{portfolio === 'monthly-giving' ? formatCurrency(annualExpected) : 'Due Sep 1'}</p></div></div>
+    <div className="grid sm:grid-cols-2 gap-4 mb-7"><div className="rounded-lg p-4 border bg-[oklch(0.985_0.008_80)] border-[oklch(0.84_0.018_75)]"><p className="text-xs uppercase tracking-[0.14em]" style={{ color: 'oklch(0.60 0.018 65)' }}>Donors tracked</p><p className="font-display text-3xl mt-1">{donors.length}</p></div><div className="rounded-lg p-4 border bg-[oklch(0.985_0.008_80)] border-[oklch(0.84_0.018_75)]"><p className="text-xs uppercase tracking-[0.14em]" style={{ color: 'oklch(0.60 0.018_65)' }}>{portfolio === 'monthly-giving' ? 'Expected annual giving' : `Thank-you letters sent in ${new Date().getFullYear()}`}</p><p className="font-display text-3xl mt-1">{portfolio === 'monthly-giving' ? formatCurrency(annualExpected) : `${donors.filter(donor => donor.thankYouLetterForCurrentYear).length}/${donors.filter(donor => (donor.currentYearDonated ?? 0) > 0).length}`}</p></div></div>
     {isLoading ? <p className="text-sm" style={{ color: 'oklch(0.52 0.022 65)' }}>Loading donors…</p> : donors.length === 0 ? <div className="rounded-lg border border-dashed p-12 text-center" style={{ borderColor: 'oklch(0.78 0.018 75)', color: 'oklch(0.52 0.022 65)' }}><RefreshCw size={24} className="mx-auto mb-3 opacity-60" /><p className="font-display text-xl">No donors in {title} yet</p><p className="text-sm mt-1">Add a donor or move an existing donor into this portfolio.</p></div> : <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">{donors.map(donor => <Card key={donor.id} donor={donor} portfolio={portfolio} onOpen={() => setSelectedId(donor.id)} />)}</div>}
     {selected && <DonorDetail donor={selected} portfolio={portfolio} onClose={() => setSelectedId(null)} />}
     {adding && <AddPortfolioDonor portfolio={portfolio} onClose={() => setAdding(false)} />}

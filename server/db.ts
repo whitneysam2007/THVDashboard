@@ -1,6 +1,7 @@
 import type { InsertUser } from '../drizzle/schema';
 import { nextOutstandingManualTask } from '../shared/manualTasks';
 import { taskRowId, taskSlugFromRowId } from '../shared/taskKeys';
+import { isThankYouLetterTaskId } from '../shared/thankYouLetters';
 import { getSupabaseServerClient } from './supabase';
 import { AUTOMATED_RECURRING_NOTE, dueMonthlyDonationDates, mountainDateToday, recurringDonationId } from './recurringDonations';
 import { latestEligibleTouchpointDate } from '../shared/contactTouchpoints';
@@ -44,7 +45,7 @@ export async function getAllDonors() {
   const [donorResult, donationResult, taskResult] = await Promise.all([
     db().from('donors').select('*').order('createdAt', { ascending: false }),
     db().from('donor_donations').select('donorId,date,amountCents'),
-    db().from('donor_tasks').select('id,donorId,label,dueDate,completedDate,kind'),
+    db().from('donor_tasks').select('id,donorId,label,dueDate,completedDate,completedBy,kind'),
   ]);
   assertSuccess(donorResult); assertSuccess(donationResult); assertSuccess(taskResult);
 
@@ -61,11 +62,18 @@ export async function getAllDonors() {
     tasks.push(task);
     tasksByDonor.set(task.donorId, tasks);
   }
-  return (donorResult.data ?? []).map((donor: any) => ({
-    ...donor,
-    currentYearDonatedCents: totalsByDonor.get(donor.id) ?? 0,
-    nextManualTask: nextOutstandingManualTask(tasksByDonor.get(donor.id) ?? []),
-  }));
+  return (donorResult.data ?? []).map((donor: any) => {
+    const tasks = tasksByDonor.get(donor.id) ?? [];
+    const thankYou = tasks.find(task =>
+      Boolean(task.completedDate) && isThankYouLetterTaskId(taskSlugFromRowId(donor.id, task.id), currentYear),
+    );
+    return {
+      ...donor,
+      currentYearDonatedCents: totalsByDonor.get(donor.id) ?? 0,
+      thankYouLetterForCurrentYear: thankYou ? { completedDate: thankYou.completedDate, completedBy: thankYou.completedBy ?? undefined } : undefined,
+      nextManualTask: nextOutstandingManualTask(tasks),
+    };
+  });
 }
 
 export async function getDonorById(id: string) {

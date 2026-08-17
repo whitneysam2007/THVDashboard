@@ -17,7 +17,7 @@ import DonorModal from '@/components/DonorModal';
 import AddDonorModal from '@/components/AddDonorModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Plus, Star, Plane, AlertCircle, Calendar, ContactRound, RefreshCw } from 'lucide-react';
+import { Search, Plus, Star, Plane, AlertCircle, Calendar, ContactRound, RefreshCw, Mail } from 'lucide-react';
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -233,7 +233,14 @@ export default function Donors() {
                       {donor.contactName ? <>{donor.contactName} · </> : ''}<span className="italic">{tierLabel(donor.tier)}</span>
                     </p>
                   </div>
-                  <StatusBadge status={donor.status} size="sm" />
+                  <div className="flex items-center gap-2">
+                    {donor.currentYearDonated && donor.currentYearDonated > 0 && (
+                      <span title={donor.thankYouLetterForCurrentYear ? `Thank-you card sent ${formatDate(donor.thankYouLetterForCurrentYear.completedDate)}` : `Thank-you card not marked sent for ${CURRENT_YEAR}`} aria-label="Thank-you card status">
+                        <Mail size={17} style={{ color: donor.thankYouLetterForCurrentYear ? 'oklch(0.50 0.13 145)' : 'oklch(0.50 0.18 250)' }} />
+                      </span>
+                    )}
+                    <StatusBadge status={donor.status} size="sm" />
+                  </div>
                 </div>
 
                 <hr className="thv-rule mb-3" />

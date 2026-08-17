@@ -68,6 +68,7 @@ function mapDbDonor(row: Record<string, unknown>): Donor {
     completedTasks: [],
     donations: (row as any).totalDonatedCents > 0 ? [{ id: '__total__', date: '', amount: ((row as any).totalDonatedCents ?? 0) / 100, note: undefined }] : [],
     currentYearDonated: Number((row as any).currentYearDonatedCents ?? 0) / 100,
+    thankYouLetterForCurrentYear: (row as any).thankYouLetterForCurrentYear ?? undefined,
     nextManualTask: (row as any).nextManualTask ?? undefined,
     activities: [],
   };

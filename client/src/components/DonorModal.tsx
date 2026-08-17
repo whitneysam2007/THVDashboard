@@ -10,6 +10,7 @@ import { Trip } from '@/lib/types';
 import StatusBadge from '@/components/StatusBadge';
 import { formatDate, nextContactDate, daysUntilNextContact, formatCurrency, totalDonated, tierLabel, donorTypeLabel, cn } from '@/lib/utils';
 import DonorJourney from '@/components/DonorJourney';
+import ThankYouLetterControl from '@/components/ThankYouLetterControl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -359,6 +360,12 @@ export default function DonorModal({ donor: donorProp, onClose }: DonorModalProp
               </div>
             </div>
           )}
+
+          <ThankYouLetterControl
+            donorId={donor.id}
+            tasks={liveTasks}
+            hasCurrentYearDonation={totalThisYear > 0}
+          />
 
           {/* Contact info */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

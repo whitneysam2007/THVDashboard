@@ -49,14 +49,22 @@ describe('generateAutoTasks tax receipt eligibility', () => {
     });
   });
 
-  it('gives lower-tier donors only the annual Brenley thank-you rather than inception or tax-report tasks', () => {
+  it('gives lower-tier donors no automatic onboarding or annual thank-you deadline tasks', () => {
     const donor = donorStartingOn('2026-01-01');
     donor.portfolio = 'monthly-giving';
     const tasks = generateAutoTasks(donor);
 
-    expect(tasks.find(task => task.id === 'brenley-annual-thank-you-2026')).toMatchObject({ dueDate: '2026-09-01' });
+    expect(tasks.some(task => task.id.includes('thank-you'))).toBe(false);
     expect(tasks.some(task => task.id === 'welcome-note')).toBe(false);
     expect(tasks.some(task => task.id === 'tax-receipt-2026')).toBe(false);
+  });
+
+  it('gives a new major donor only an acknowledgment and newsletter task', () => {
+    const tasks = generateAutoTasks(donorStartingOn('2026-04-18'));
+
+    expect(tasks.map(task => task.id)).toContain('donation-acknowledgment');
+    expect(tasks.map(task => task.id)).toContain('newsletter');
+    expect(tasks.some(task => task.id === 'welcome-note')).toBe(false);
   });
 });
 

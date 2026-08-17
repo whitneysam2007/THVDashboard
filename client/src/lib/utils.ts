@@ -175,11 +175,10 @@ export function generateAutoTasks(donor: Donor): TaskEntry[] {
   const isMajorDonor = donor.portfolio === 'major';
 
   // Major donors retain their high-touch onboarding and February/March annual
-  // stewardship. Lower-tier and Monthly Giving donors receive Zefy acknowledgments
-  // at inception, so their only automatic task is Brenley's September thank-you.
+  // stewardship. Thank-you cards are tracked separately through a current-year
+  // letter indicator, never as a deadline-driven journey task.
   if (isMajorDonor) {
     tasks.push({ id: 'donation-acknowledgment', kind: 'onboarding', label: 'Send donation acknowledgment & tax letter', dueDate: donor.startDate });
-    tasks.push({ id: 'welcome-note', kind: 'onboarding', label: 'Send welcome thank you note', dueDate: donor.startDate });
     tasks.push({ id: 'newsletter', kind: 'onboarding', label: 'Add to newsletter', dueDate: donor.startDate });
   }
 
@@ -199,15 +198,6 @@ export function generateAutoTasks(donor: Donor): TaskEntry[] {
     }
     if (isMajorDonor) {
       tasks.push({ id: `annual-report-${yr}`, kind: 'recurring', label: `Annual Report (${yr - 1} report)`, dueDate: `${yr}-03-01` });
-    }
-    const annualThankYouDue = new Date(yr, 8, 1); // September 1, local time
-    if (start <= annualThankYouDue) {
-      tasks.push({
-        id: `brenley-annual-thank-you-${yr}`,
-        kind: 'recurring',
-        label: 'Brenley annual thank-you note',
-        dueDate: `${yr}-09-01`,
-      });
     }
   }
 
