@@ -34,7 +34,7 @@ function isOverdue(dueDate: string, completedDate?: string | null) {
 }
 
 export default function Tasks() {
-  const { store } = useDashboard();
+  const { store, updateDonor } = useDashboard();
   const utils = trpc.useUtils();
 
   // Fetch all DB tasks
@@ -63,6 +63,8 @@ export default function Tasks() {
       return next;
     });
   };
+
+  const taskKey = (task: Pick<TaskRow, 'donorId' | 'id'>) => `${task.donorId}::${task.id}`;
 
   // Server returns bare slugs, so key the lookup by donorId + slug.
   const dbTaskMap = new Map((dbTasks as any[]).map((t: any) => [t.donorId + '::' + t.id, t]));
@@ -139,6 +141,12 @@ export default function Tasks() {
 
   const handleDelete = async (task: TaskRow) => {
     await deleteTaskMut.mutateAsync({ id: task.id, donorId: task.donorId });
+    if (task.isAuto) {
+      const donor = store.donors.find(entry => entry.id === task.donorId);
+      if (donor) {
+        await updateDonor(donor.id, { dismissedTasks: Array.from(new Set([...(donor.dismissedTasks ?? []), task.id])) });
+      }
+    }
   };
 
   const handleReopen = async (task: TaskRow) => {
@@ -292,7 +300,7 @@ export default function Tasks() {
                     {tasks.map(task => {
                       const done = !!task.completedDate;
                       const overdue = isOverdue(task.dueDate, task.completedDate);
-                      const isConfirming = completingId === task.id;
+                      const isConfirming = completingId === taskKey(task);
                       const dotColor = task.kind === 'recurring' ? 'oklch(0.75 0.12 80)' : 'oklch(0.50 0.18 250)';
                       return (
                         <div key={task.id + task.donorId} className="px-4 py-2.5 flex items-start gap-3" style={{ background: done ? 'oklch(0.985 0.004 75)' : 'transparent' }}>
@@ -305,7 +313,7 @@ export default function Tasks() {
                           </div>
                           {/* Task content */}
                           <div className="flex-1 min-w-0">
-                            {editingId === task.id ? (
+                            {editingId === taskKey(task) ? (
                               <div className="flex items-center gap-2 flex-wrap">
                                 <Input value={editLabel} onChange={e => setEditLabel(e.target.value)} className="text-sm h-7 px-2 flex-1 min-w-32" autoFocus onKeyDown={e => e.key === 'Enter' && handleEdit(task)} />
                                 <Input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} className="text-sm h-7 px-2 w-36" />
@@ -344,9 +352,9 @@ export default function Tasks() {
                           {/* Actions */}
                           {!done && !isConfirming && (
                             <div className="flex items-center gap-1.5 flex-shrink-0">
-                              {editingId !== task.id && (
+                              {editingId !== taskKey(task) && (
                                 <button
-                                  onClick={() => { setEditingId(task.id); setEditLabel(task.label); setEditDate(task.dueDate); setCompletingId(null); }}
+                                  onClick={() => { setEditingId(taskKey(task)); setEditLabel(task.label); setEditDate(task.dueDate); setCompletingId(null); }}
                                   className="p-1 rounded hover:bg-[oklch(0.94_0.012_75)] transition-colors"
                                   style={{ color: 'oklch(0.52 0.022 65)' }}
                                 >
@@ -354,7 +362,7 @@ export default function Tasks() {
                                 </button>
                               )}
                               <button
-                                onClick={() => { setCompletingId(task.id); setCompleteDate(TODAY); }}
+                                onClick={() => { setCompletingId(taskKey(task)); setCompleteDate(TODAY); }}
                                 className="text-xs px-2 py-0.5 rounded border transition-colors hover:bg-green-50"
                                 style={{ color: 'oklch(0.45 0.15 145)', borderColor: 'oklch(0.75 0.12 145)' }}
                               >
@@ -395,14 +403,33 @@ export default function Tasks() {
                               <CheckCircle2 className="w-4 h-4" style={{ color: 'oklch(0.55 0.15 145)' }} />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <span className="text-sm line-through opacity-55" style={{ color: 'oklch(0.22 0.018 55)' }}>
-                                {task.label}
-                              </span>
+                              {editingId === taskKey(task) ? (
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <Input value={editLabel} onChange={e => setEditLabel(e.target.value)} className="text-sm h-7 px-2 flex-1 min-w-32" autoFocus onKeyDown={e => e.key === 'Enter' && handleEdit(task)} />
+                                  <Input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} className="text-sm h-7 px-2 w-36" />
+                                  <button onClick={() => handleEdit(task)} className="text-xs px-2 py-0.5 rounded text-white" style={{ background: 'oklch(0.22 0.018 55)' }}>Save</button>
+                                  <button onClick={() => setEditingId(null)} className="text-xs" style={{ color: 'oklch(0.52 0.022 65)' }}>cancel</button>
+                                </div>
+                              ) : (
+                                <span className="text-sm line-through opacity-55" style={{ color: 'oklch(0.22 0.018 55)' }}>
+                                  {task.label}
+                                </span>
+                              )}
                               <p className="text-xs mt-0.5" style={{ color: 'oklch(0.48 0.10 145)' }}>
                                 Completed {formatDate(task.completedDate!)}{task.completedBy ? ` by ${task.completedBy}` : ''}
                               </p>
                             </div>
                             <div className="flex items-center gap-1.5 flex-shrink-0">
+                              {editingId !== taskKey(task) && (
+                                <button
+                                  onClick={() => { setEditingId(taskKey(task)); setEditLabel(task.label); setEditDate(task.dueDate); }}
+                                  className="p-1 rounded hover:bg-[oklch(0.94_0.012_75)] transition-colors"
+                                  style={{ color: 'oklch(0.52 0.022 65)' }}
+                                  aria-label={`Edit ${task.label}`}
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                              )}
                               <button
                                 onClick={() => handleReopen(task)}
                                 className="text-xs px-2 py-0.5 rounded border transition-colors hover:bg-[oklch(0.96_0.012_250)]"

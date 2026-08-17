@@ -201,17 +201,20 @@ export const appRouter = router({
 
     updateActivity: protectedProcedure.input(z.object({
       id: z.string(),
+      donorId: z.string(),
       note: z.string().optional(),
       date: z.string().optional(),
       author: z.string().optional(),
     })).mutation(async ({ input }) => {
-      const { id, ...data } = input;
+      const { id, donorId, ...data } = input;
       await updateActivity(id, data);
+      await recalculateLastContactDate(donorId);
       return { success: true };
     }),
 
-    deleteActivity: protectedProcedure.input(z.object({ id: z.string() })).mutation(async ({ input }) => {
+    deleteActivity: protectedProcedure.input(z.object({ id: z.string(), donorId: z.string() })).mutation(async ({ input }) => {
       await deleteActivity(input.id);
+      await recalculateLastContactDate(input.donorId);
       return { success: true };
     }),
 
@@ -244,11 +247,13 @@ export const appRouter = router({
       completedBy: z.string().optional(),
     })).mutation(async ({ input }) => {
       await upsertTask(input);
+      await recalculateLastContactDate(input.donorId);
       return { success: true };
     }),
 
-    deleteTask: protectedProcedure.input(z.object({ id: z.string(), donorId: z.string().optional() })).mutation(async ({ input }) => {
+    deleteTask: protectedProcedure.input(z.object({ id: z.string(), donorId: z.string() })).mutation(async ({ input }) => {
       await deleteTask(input.id, input.donorId);
+      await recalculateLastContactDate(input.donorId);
       return { success: true };
     }),
 

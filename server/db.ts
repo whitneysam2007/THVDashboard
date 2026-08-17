@@ -3,6 +3,7 @@ import { nextOutstandingManualTask } from '../shared/manualTasks';
 import { taskRowId, taskSlugFromRowId } from '../shared/taskKeys';
 import { getSupabaseServerClient } from './supabase';
 import { AUTOMATED_RECURRING_NOTE, dueMonthlyDonationDates, mountainDateToday, recurringDonationId } from './recurringDonations';
+import { latestEligibleTouchpointDate } from '../shared/contactTouchpoints';
 
 type InsertRow = Record<string, unknown>;
 const db = () => getSupabaseServerClient() as any;
@@ -104,9 +105,12 @@ export async function deleteActivity(id: string) {
 }
 
 export async function recalculateLastContactDate(donorId: string) {
-  const result = await db().from('donor_activities').select('date').eq('donorId', donorId).order('date', { ascending: false }).limit(1);
-  assertSuccess(result);
-  const latest = result.data?.[0]?.date ?? null;
+  const [activityResult, taskResult] = await Promise.all([
+    db().from('donor_activities').select('date').eq('donorId', donorId),
+    db().from('donor_tasks').select('id,completedDate').eq('donorId', donorId),
+  ]);
+  assertSuccess(activityResult); assertSuccess(taskResult);
+  const latest = latestEligibleTouchpointDate(activityResult.data ?? [], taskResult.data ?? []);
   await updateDonorById(donorId, { lastContactDate: latest });
 }
 

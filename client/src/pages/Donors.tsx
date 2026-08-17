@@ -10,13 +10,14 @@ import {
 } from '@/lib/utils';
 import { donorTypeLabel } from '@/lib/utils';
 import { donationsLastYears } from '@/lib/utils';
+import { matchesRecurringDonorFilter } from '@/lib/donorFilters';
 import { DonorStatus } from '@/lib/types';
 import StatusBadge from '@/components/StatusBadge';
 import DonorModal from '@/components/DonorModal';
 import AddDonorModal from '@/components/AddDonorModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Plus, Star, Plane, AlertCircle, Calendar, ContactRound } from 'lucide-react';
+import { Search, Plus, Star, Plane, AlertCircle, Calendar, ContactRound, RefreshCw } from 'lucide-react';
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -36,6 +37,7 @@ export default function Donors() {
   const [filterNaru, setFilterNaru] = useState(false);
   const [filterTrip, setFilterTrip] = useState(false);
   const [filterPotential, setFilterPotential] = useState(false);
+  const [filterRecurring, setFilterRecurring] = useState(false);
   const [filterUpcoming, setFilterUpcoming] = useState(false);
   const [selectedDonorId, setSelectedDonorId] = useState<string | null>(null);
   const [showAddDonor, setShowAddDonor] = useState(false);
@@ -54,10 +56,11 @@ export default function Donors() {
     const matchStatus = statusFilter === 'all'
       || (statusFilter === 'potential' ? d.type === 'potential' : d.status === (statusFilter as DonorStatus));
     const matchPotential = !filterPotential || d.type === 'potential';
+    const matchRecurring = matchesRecurringDonorFilter(d, filterRecurring);
     const matchNaru = !filterNaru || d.naruCircle;
     const matchTrip = !filterTrip || d.donorTrip;
     const matchUpcoming = !filterUpcoming || !!donorCardPriorityDate(d);
-    return matchSearch && matchStatus && matchNaru && matchTrip && matchPotential && matchUpcoming;
+    return matchSearch && matchStatus && matchNaru && matchTrip && matchPotential && matchRecurring && matchUpcoming;
   });
 
   // Default: largest lifetime donors first. Upcoming tasks: the date shown on
@@ -152,6 +155,19 @@ export default function Donors() {
         >
           <Plane size={10} />
           Donor Trip
+        </button>
+        <button
+          onClick={() => setFilterRecurring(!filterRecurring)}
+          aria-pressed={filterRecurring}
+          className={cn(
+            'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
+            filterRecurring
+              ? 'bg-[oklch(0.88_0.022_72)] border-[oklch(0.70_0.022_72)] text-[oklch(0.28_0.018_55)]'
+              : 'border-[oklch(0.84_0.018_75)] text-[oklch(0.52_0.022_65)] hover:border-[oklch(0.60_0.018_65)]'
+          )}
+        >
+          <RefreshCw size={10} />
+          Recurring donors
         </button>
         <button
           onClick={() => setFilterUpcoming(!filterUpcoming)}

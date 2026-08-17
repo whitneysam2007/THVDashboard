@@ -239,7 +239,11 @@ export function buildTimeline(donor: Donor): TimelineItem[] {
   // Auto-generated tasks
   for (const t of generateAutoTasks(donor)) {
     if (!dismissed.has(t.id)) {
-      items.push({ kind: 'task', date: t.dueDate, data: t, completed: completedMap.get(t.id) });
+      const storedTask = completedMap.get(t.id);
+      const task = storedTask
+        ? { ...t, label: storedTask.label, dueDate: storedTask.dueDate, kind: storedTask.kind }
+        : t;
+      items.push({ kind: 'task', date: task.dueDate, data: task, completed: storedTask });
     }
   }
 

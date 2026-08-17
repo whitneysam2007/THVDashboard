@@ -136,13 +136,19 @@ export default function DonorJourney({ donor, currentUser, liveActivities, liveT
     setShowAddTask(false);
   };
 
-  const handleEditTask = (taskId: string, newLabel: string, newDate: string) => {
-    updateDonor(donor.id, {
-      completedTasks: effectiveCompletedTasks.map(t =>
-        t.id === taskId ? { ...t, label: newLabel.trim() || t.label, dueDate: newDate } : t
-      ),
+  const handleEditTask = async (task: TaskEntry, newLabel: string, newDate: string) => {
+    const storedTask = effectiveCompletedTasks.find(entry => entry.id === task.id);
+    await upsertTaskMut.mutateAsync({
+      id: task.id,
+      donorId: donor.id,
+      kind: task.kind,
+      label: newLabel.trim() || task.label,
+      dueDate: newDate || task.dueDate,
+      completedDate: storedTask?.completedDate,
+      completedBy: storedTask?.completedBy,
     });
     setEditingTaskId(null);
+    onTaskCompleted?.();
   };
 
   const handleDismissTask = (taskId: string, label: string) => {
@@ -152,11 +158,12 @@ export default function DonorJourney({ donor, currentUser, liveActivities, liveT
     });
   };
 
-  const handleDeleteTask = async (taskId: string, label: string) => {
-    captureUndo(`Deleted "${label}"`);
-    // Delete the row in the DB (donorId scopes auto-task slugs to this donor),
-    // then refetch so the timeline reflects the deletion.
-    await deleteTaskMut.mutateAsync({ id: taskId, donorId: donor.id });
+  const handleDeleteTask = async (task: TaskEntry) => {
+    captureUndo(`Deleted "${task.label}"`);
+    await deleteTaskMut.mutateAsync({ id: task.id, donorId: donor.id });
+    if (!task.id.startsWith('manual-')) {
+      await updateDonor(donor.id, { dismissedTasks: Array.from(new Set([...(donor.dismissedTasks ?? []), task.id])) });
+    }
     onTaskCompleted?.();
   };
 
@@ -342,7 +349,7 @@ export default function DonorJourney({ donor, currentUser, liveActivities, liveT
                         </div>
                         {/* Right-side action group */}
                         <div className="flex items-center gap-1.5 flex-shrink-0">
-                          {task.id.startsWith('manual-') && !isCompleted && !isConfirming && editingTaskId !== task.id && (
+                          {!isConfirming && editingTaskId !== task.id && (
                             <button onClick={() => setEditingTaskId(task.id)} className="text-xs opacity-50 hover:opacity-100" style={{ color: 'oklch(0.50 0.18 250)' }}>edit</button>
                           )}
                           {!isCompleted && !isConfirming && editingTaskId !== task.id && (
@@ -354,9 +361,9 @@ export default function DonorJourney({ donor, currentUser, liveActivities, liveT
                               Mark done
                             </button>
                           )}
-                          {!isCompleted && !isConfirming && editingTaskId !== task.id && (
+                          {!isConfirming && editingTaskId !== task.id && (
                             <button
-                              onClick={() => task.id.startsWith('manual-') ? handleDeleteTask(task.id, task.label) : handleDismissTask(task.id, task.label)}
+                              onClick={() => task.id.startsWith('manual-') || isCompleted ? handleDeleteTask(task) : handleDismissTask(task.id, task.label)}
                               className="text-xs px-2 py-0.5 rounded border transition-colors hover:bg-red-50"
                               style={{ color: 'oklch(0.50 0.20 27)', borderColor: 'oklch(0.75 0.15 27)', background: 'white' }}
                             >
@@ -370,7 +377,7 @@ export default function DonorJourney({ donor, currentUser, liveActivities, liveT
                       {editingTaskId === task.id && (
                         <InlineTaskEdit
                           task={task}
-                          onSave={(l, d) => handleEditTask(task.id, l, d)}
+                          onSave={(l, d) => handleEditTask(task, l, d)}
                           onCancel={() => setEditingTaskId(null)}
                         />
                       )}
@@ -416,7 +423,7 @@ export default function DonorJourney({ donor, currentUser, liveActivities, liveT
                       {!isEditingThis && (
                         <div className="flex items-center gap-1.5 flex-shrink-0">
                           <button onClick={() => { setEditingActivityId(activity.id); setEditActivityNote(activity.note); setEditActivityDate(activity.date); }} className="text-xs opacity-50 hover:opacity-100" style={{ color: 'oklch(0.50 0.18 250)' }}>edit</button>
-                          <button onClick={async () => { await deleteActivityMut.mutateAsync({ id: activity.id }); onActivityAdded?.(); }} className="text-xs px-2 py-0.5 rounded border hover:bg-red-50" style={{ color: 'oklch(0.50 0.20 27)', borderColor: 'oklch(0.75 0.15 27)' }}>Delete</button>
+                          <button onClick={async () => { await deleteActivityMut.mutateAsync({ id: activity.id, donorId: donor.id }); onActivityAdded?.(); }} className="text-xs px-2 py-0.5 rounded border hover:bg-red-50" style={{ color: 'oklch(0.50 0.20 27)', borderColor: 'oklch(0.75 0.15 27)' }}>Delete</button>
                         </div>
                       )}
                     </div>
@@ -425,7 +432,7 @@ export default function DonorJourney({ donor, currentUser, liveActivities, liveT
                         <Textarea value={editActivityNote} onChange={e => setEditActivityNote(e.target.value)} rows={2} className="text-sm" />
                         <Input type="date" value={editActivityDate} onChange={e => setEditActivityDate(e.target.value)} className="text-xs h-7 px-2 w-36" />
                         <div className="flex gap-1">
-                          <button onClick={async () => { await updateActivityMut.mutateAsync({ id: activity.id, note: editActivityNote, date: editActivityDate }); setEditingActivityId(null); onActivityAdded?.(); }} className="text-xs px-2 py-0.5 rounded text-white" style={{ background: 'oklch(0.22 0.018 55)' }}>Save</button>
+                          <button onClick={async () => { await updateActivityMut.mutateAsync({ id: activity.id, donorId: donor.id, note: editActivityNote, date: editActivityDate }); setEditingActivityId(null); onActivityAdded?.(); }} className="text-xs px-2 py-0.5 rounded text-white" style={{ background: 'oklch(0.22 0.018 55)' }}>Save</button>
                           <button onClick={() => setEditingActivityId(null)} className="text-xs px-2 py-0.5 rounded" style={{ color: 'oklch(0.52 0.022 65)' }}>cancel</button>
                         </div>
                       </div>
