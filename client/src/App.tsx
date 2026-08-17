@@ -10,6 +10,7 @@ import Trips from "./pages/Trips";
 import Initiatives from "./pages/Initiatives";
 import Tasks from "./pages/Tasks";
 import TeamAccess from "./pages/TeamAccess";
+import PortfolioDonors from "./pages/PortfolioDonors";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "./_core/hooks/useAuth";
 import Login from './pages/Login';
@@ -46,6 +47,8 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={() => <AuthGuard><Donors /></AuthGuard>} />
+      <Route path="/donors-500-5k" component={() => <AuthGuard><PortfolioDonors portfolio="donors-500-5k" /></AuthGuard>} />
+      <Route path="/monthly-giving" component={() => <AuthGuard><PortfolioDonors portfolio="monthly-giving" /></AuthGuard>} />
       <Route path="/trips" component={() => <AuthGuard><Trips /></AuthGuard>} />
       <Route path="/initiatives" component={() => <AuthGuard><Initiatives /></AuthGuard>} />
       <Route path="/tasks" component={() => <AuthGuard><Tasks /></AuthGuard>} />

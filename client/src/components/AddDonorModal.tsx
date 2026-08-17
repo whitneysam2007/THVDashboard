@@ -48,6 +48,7 @@ export default function AddDonorModal({ onClose }: AddDonorModalProps) {
       phone: form.phone || undefined,
       address: form.address || undefined,
       startDate: form.startDate,
+      portfolio: 'major',
       type: form.type,
       tier: form.tier,
       contractEndDate: form.contractEndDate || undefined,

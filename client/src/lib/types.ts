@@ -3,6 +3,7 @@
 export type DonorStatus = 'green' | 'yellow' | 'orange' | 'grey';
 export type DonorType = 'recurring' | 'potentially-recurring' | 'one-time' | 'past' | 'potential';
 export type DonorTier = 'individual' | 'family-foundation' | 'business' | 'institution';
+export type DonorPortfolio = 'major' | 'donors-500-5k' | 'monthly-giving';
 
 // A completable task on the donor journey timeline
 export interface TaskEntry {
@@ -36,6 +37,7 @@ export interface Donor {
   phone?: string;
   address?: string;
   startDate: string;
+  portfolio: DonorPortfolio;
   type: DonorType;
   tier: DonorTier;
   contractEndDate?: string;

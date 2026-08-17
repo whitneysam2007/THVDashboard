@@ -8,6 +8,7 @@ function donorStartingOn(startDate: string): Donor {
     name: 'Test Donor',
     contactName: '',
     startDate,
+    portfolio: 'major',
     type: 'one-time',
     tier: 'individual',
     cadenceDays: 90,
@@ -46,6 +47,16 @@ describe('generateAutoTasks tax receipt eligibility', () => {
       dueDate: '2026-03-01',
       label: 'Annual Report (2025 report)',
     });
+  });
+
+  it('gives lower-tier donors only the annual Brenley thank-you rather than inception or tax-report tasks', () => {
+    const donor = donorStartingOn('2026-01-01');
+    donor.portfolio = 'monthly-giving';
+    const tasks = generateAutoTasks(donor);
+
+    expect(tasks.find(task => task.id === 'brenley-annual-thank-you-2026')).toMatchObject({ dueDate: '2026-09-01' });
+    expect(tasks.some(task => task.id === 'welcome-note')).toBe(false);
+    expect(tasks.some(task => task.id === 'tax-receipt-2026')).toBe(false);
   });
 });
 

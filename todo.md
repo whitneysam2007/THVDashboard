@@ -38,8 +38,8 @@
 - [x] Sign out revoked or unapproved users and show a clear access-revoked message
 - [x] Added regression tests for inactive and unapproved users attempting dashboard access
 - [x] In Supabase, disabled public email sign-ups after deploying the invitation-first update
-- [ ] Optionally enable Cloudflare Turnstile in Supabase and set VITE_TURNSTILE_SITE_KEY in Netlify
-- [ ] Optionally set the recommended Supabase session lifetime and inactivity timeout
+- [x] Deferred by owner preference: do not enable Cloudflare Turnstile or change Netlify login behavior without explicit approval
+- [x] Deferred by owner preference: keep the existing Supabase session behavior unchanged unless Liz requests a session-policy change
 - [x] Diagnosed and restored production dashboard data reads on the live Netlify deployment by bundling Express in the Netlify function
 - [x] Pushed THV logo and favicon assets to GitHub and confirmed the Netlify deployment completed
 - [x] Verified live Netlify serves the standalone logo/favicon assets and no longer depends on Manus-hosted logo URLs
@@ -80,6 +80,15 @@
 - [x] Donor home: add a separate Potentially Recurring filter for conversion-focused donor work
 - [x] Donor home: preserve the existing Potential status filter while keeping Potentially Recurring as a separate conversion filter
 - [x] Deployment: push the reviewed Potentially Recurring filter update to GitHub for Netlify deployment
+- [x] Donor tiers: add separate Donors 500–5K and Monthly Giving tabs, with one donor assigned to only one tier at a time
+- [x] Donors 500–5K: support transaction history, September 1 annual Brenley thank-you tracking, and a history-preserving Move to Major Donors action
+- [x] Monthly Giving: create monthly donor cards with automatic monthly transactions, expected annual totals, and no initial welcome-note task
+- [x] Annual stewardship: generate a September 1 Brenley thank-you task across all tracked donor tiers and count its completion as a contact touchpoint
+- [x] Major donor status: confirm status is determined from recorded contact activity rather than gift amounts
+- [x] Import: create Monthly Giving cards from approved Zefy screenshot or CSV mappings without inventing missing contact details or transaction data
+- [x] Kirks: logged the June 1, 2026 donor-packet contact interaction so the donor card recalculates from that active touchpoint
+- [x] Donors 500–5K import: used only the approved Donors $500-$4,999 worksheet to import nine validated donor records, transactions, contact details, and thank-you history
+- [ ] Deployment: push the completed donor-tier tabs and validated Monthly Giving and Donors 500–5K imports to GitHub for Netlify deployment
 - [x] Deployment: push the reviewed donor journey and Recurring donors filter updates to GitHub for Netlify deployment
 - [x] Replace sandbox password login with a development-only read-only dashboard preview for reviewing Trips changes before GitHub deployment
 - [x] Add a development-only read-only bypass for sandbox previews while preserving production password enforcement

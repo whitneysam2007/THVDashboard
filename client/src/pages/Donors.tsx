@@ -43,7 +43,8 @@ export default function Donors() {
   const [showAddDonor, setShowAddDonor] = useState(false);
 
   // Compute live status + total donated for each donor
-  const donors = store.donors.map(d => ({
+  const allDonors = store.donors;
+  const donors = allDonors.filter(d => d.portfolio === 'major').map(d => ({
     ...d,
     status: computeDonorStatus(d),
     _total: totalDonated(d),
@@ -71,7 +72,7 @@ export default function Donors() {
 
   const currentYear = new Date().getFullYear();
   const currentYearTotal = currentYearContributionTotal(donors);
-  const recurringAnnualBase = expectedRecurringAnnualAmount(donors);
+  const recurringAnnualBase = expectedRecurringAnnualAmount(allDonors);
   const selectedDonor = donors.find(d => d.id === selectedDonorId) || null;
 
   return (

@@ -19,6 +19,20 @@ describe('latestEligibleTouchpointDate', () => {
     )).toBe('2026-08-07');
   });
 
+  it('counts a completed annual Brenley thank-you as an intentional donor touchpoint', () => {
+    expect(latestEligibleTouchpointDate(
+      [{ date: '2026-08-07' }],
+      [{ id: 'brenley-annual-thank-you-2026', completedDate: '2026-09-04' }],
+    )).toBe('2026-09-04');
+  });
+
+  it('recognizes the donor-scoped annual thank-you ID stored in the database', () => {
+    expect(latestEligibleTouchpointDate(
+      [],
+      [{ id: 'donor-123_brenley-annual-thank-you-2026', completedDate: '2026-09-04' }],
+    )).toBe('2026-09-04');
+  });
+
   it('returns no touchpoint when nothing eligible has occurred', () => {
     expect(latestEligibleTouchpointDate([], [{ id: 'manual-call' }])).toBeNull();
   });

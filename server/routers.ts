@@ -12,6 +12,7 @@ import {
   getAllInitiatives, insertInitiative, updateInitiativeById, deleteInitiativeById, recalculateLastContactDate,
 } from "./db";
 import { nanoid } from "nanoid";
+import { tagsWithPortfolio } from '../shared/donorPortfolios';
 
 type TeamAccessRow = {
   email: string;
@@ -148,6 +149,7 @@ export const appRouter = router({
       phone: z.string().optional(),
       address: z.string().optional(),
       startDate: z.string(),
+      portfolio: z.enum(['major', 'donors-500-5k', 'monthly-giving']).default('major'),
       type: z.string().default('one-time'),
       tier: z.string().default('individual'),
       contractEndDate: z.string().optional(),
@@ -159,7 +161,8 @@ export const appRouter = router({
       notes: z.string().optional(),
     })).mutation(async ({ input }) => {
       const id = nanoid();
-      await insertDonor({ ...input, id, status: 'grey' });
+      const { portfolio, ...donor } = input;
+      await insertDonor({ ...donor, id, status: 'grey', tags: JSON.stringify(tagsWithPortfolio([], portfolio)) });
       return { id };
     }),
 
@@ -167,7 +170,13 @@ export const appRouter = router({
       id: z.string(),
       data: z.record(z.string(), z.unknown()),
     })).mutation(async ({ input }) => {
-      await updateDonorById(input.id, input.data as any);
+      const { portfolio, ...data } = input.data as Record<string, unknown>;
+      if (portfolio !== undefined) {
+        const existing = await getDonorById(input.id);
+        if (!existing) throw new Error('Donor not found.');
+        data.tags = JSON.stringify(tagsWithPortfolio(existing.tags, portfolio as any));
+      }
+      await updateDonorById(input.id, data as any);
       return { success: true };
     }),
 

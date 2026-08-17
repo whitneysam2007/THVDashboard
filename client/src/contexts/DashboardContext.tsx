@@ -8,6 +8,7 @@ import { computeDonorStatus } from '@/lib/utils';
 import { trpc } from '@/lib/trpc';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { nanoid } from 'nanoid';
+import { portfolioFromTags, tagsWithoutPortfolio } from '@shared/donorPortfolios';
 
 interface DashboardContextValue {
   store: DashboardStore;
@@ -43,6 +44,7 @@ function mapDbDonor(row: Record<string, unknown>): Donor {
     phone: row.phone as string | undefined,
     address: row.address as string | undefined,
     startDate: row.startDate as string,
+    portfolio: portfolioFromTags(row.tags),
     type: (row.type as Donor['type']) ?? 'one-time',
     tier: (row.tier as Donor['tier']) ?? 'individual',
     contractEndDate: row.contractEndDate as string | undefined,
@@ -61,7 +63,7 @@ function mapDbDonor(row: Record<string, unknown>): Donor {
     nextAction: row.nextAction as string | undefined,
     dismissedTasks: row.dismissedTasks ? JSON.parse(row.dismissedTasks as string) : [],
     notes: row.notes as string | undefined,
-    tags: row.tags ? JSON.parse(row.tags as string) : [],
+    tags: tagsWithoutPortfolio(row.tags),
     tripId: row.tripId as string | undefined,
     completedTasks: [],
     donations: (row as any).totalDonatedCents > 0 ? [{ id: '__total__', date: '', amount: ((row as any).totalDonatedCents ?? 0) / 100, note: undefined }] : [],
@@ -181,6 +183,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       phone: rest.phone,
       address: rest.address,
       startDate: rest.startDate,
+      portfolio: rest.portfolio ?? 'major',
       type: rest.type ?? 'one-time',
       tier: rest.tier ?? 'individual',
       contractEndDate: rest.contractEndDate,

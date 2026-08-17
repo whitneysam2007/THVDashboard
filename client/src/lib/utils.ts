@@ -172,29 +172,16 @@ export function generateAutoTasks(donor: Donor): TaskEntry[] {
   const start = new Date(donor.startDate + (donor.startDate.length === 10 ? 'T00:00:00' : ''));
   const today = new Date();
 
-  // Onboarding: Donation acknowledgment & tax letter — due on start date (first task)
-  tasks.push({
-    id: 'donation-acknowledgment',
-    kind: 'onboarding',
-    label: 'Send donation acknowledgment & tax letter',
-    dueDate: donor.startDate,
-  });
+  const isMajorDonor = donor.portfolio === 'major';
 
-  // Onboarding: Welcome thank you note — due on start date
-  tasks.push({
-    id: 'welcome-note',
-    kind: 'onboarding',
-    label: 'Send welcome thank you note',
-    dueDate: donor.startDate,
-  });
-
-  // Onboarding: Add to newsletter — due on start date
-  tasks.push({
-    id: 'newsletter',
-    kind: 'onboarding',
-    label: 'Add to newsletter',
-    dueDate: donor.startDate,
-  });
+  // Major donors retain their high-touch onboarding and February/March annual
+  // stewardship. Lower-tier and Monthly Giving donors receive Zefy acknowledgments
+  // at inception, so their only automatic task is Brenley's September thank-you.
+  if (isMajorDonor) {
+    tasks.push({ id: 'donation-acknowledgment', kind: 'onboarding', label: 'Send donation acknowledgment & tax letter', dueDate: donor.startDate });
+    tasks.push({ id: 'welcome-note', kind: 'onboarding', label: 'Send welcome thank you note', dueDate: donor.startDate });
+    tasks.push({ id: 'newsletter', kind: 'onboarding', label: 'Add to newsletter', dueDate: donor.startDate });
+  }
 
   // Recurring: Tax Receipt Letter — February 1 each year. A donor who begins
   // after that year's February deadline has no receipt task for that year.
@@ -202,7 +189,7 @@ export function generateAutoTasks(donor: Donor): TaskEntry[] {
   const endYear = today.getFullYear() + 1; // show one year ahead
   for (let yr = startYear; yr <= endYear; yr++) {
     const taxReceiptDue = new Date(yr, 1, 1); // February 1, local time
-    if (start <= taxReceiptDue) {
+    if (isMajorDonor && start <= taxReceiptDue) {
       tasks.push({
         id: `tax-receipt-${yr}`,
         kind: 'recurring',
@@ -210,12 +197,18 @@ export function generateAutoTasks(donor: Donor): TaskEntry[] {
         dueDate: `${yr}-02-01`,
       });
     }
-    tasks.push({
-      id: `annual-report-${yr}`,
-      kind: 'recurring',
-      label: `Annual Report (${yr - 1} report)`,
-      dueDate: `${yr}-03-01`,
-    });
+    if (isMajorDonor) {
+      tasks.push({ id: `annual-report-${yr}`, kind: 'recurring', label: `Annual Report (${yr - 1} report)`, dueDate: `${yr}-03-01` });
+    }
+    const annualThankYouDue = new Date(yr, 8, 1); // September 1, local time
+    if (start <= annualThankYouDue) {
+      tasks.push({
+        id: `brenley-annual-thank-you-${yr}`,
+        kind: 'recurring',
+        label: 'Brenley annual thank-you note',
+        dueDate: `${yr}-09-01`,
+      });
+    }
   }
 
   return tasks;

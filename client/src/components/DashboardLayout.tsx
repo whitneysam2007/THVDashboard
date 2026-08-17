@@ -6,12 +6,14 @@ import { Link, useLocation } from 'wouter';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import {
-  Users, Plane, BarChart2, CheckSquare, LogOut, Menu, X, ChevronRight, ShieldCheck, KeyRound
+  Users, Plane, BarChart2, CheckSquare, LogOut, Menu, X, ChevronRight, ShieldCheck, KeyRound, HeartHandshake, RefreshCw
 } from 'lucide-react';
 import { ChangePasswordDialog } from '@/components/ChangePasswordDialog';
 
 const NAV = [
   { href: '/', label: 'Donors', icon: Users },
+  { href: '/donors-500-5k', label: 'Donors 500–5K', icon: HeartHandshake },
+  { href: '/monthly-giving', label: 'Monthly Giving', icon: RefreshCw },
   { href: '/trips', label: 'Trips', icon: Plane },
   { href: '/initiatives', label: 'Initiatives', icon: BarChart2 },
   { href: '/tasks', label: 'Tasks', icon: CheckSquare },
