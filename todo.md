@@ -79,7 +79,7 @@
 - [x] Donor home: add a filter for donors explicitly marked Recurring, separate from Potentially Recurring
 - [x] Donor home: add a separate Potentially Recurring filter for conversion-focused donor work
 - [x] Donor home: preserve the existing Potential status filter while keeping Potentially Recurring as a separate conversion filter
-- [ ] Deployment: push the reviewed Potentially Recurring filter update to GitHub for Netlify deployment
+- [x] Deployment: push the reviewed Potentially Recurring filter update to GitHub for Netlify deployment
 - [x] Deployment: push the reviewed donor journey and Recurring donors filter updates to GitHub for Netlify deployment
 - [x] Replace sandbox password login with a development-only read-only dashboard preview for reviewing Trips changes before GitHub deployment
 - [x] Add a development-only read-only bypass for sandbox previews while preserving production password enforcement
