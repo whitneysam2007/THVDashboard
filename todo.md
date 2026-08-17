@@ -110,8 +110,11 @@
 - [x] Deployment: pushed the approved lower-tier donor deletion controls to GitHub for Netlify deployment
 - [x] Medical Volunteers: added an expedition-grouped profile tab for trip attendees with Medical, Nurse, Doctor, OB, or Radiology skills
 - [x] Navigation: renamed the primary Donors tab to Major Donors
-- [ ] Deployment: push the approved Medical Volunteers tab and Major Donors navigation rename to GitHub for Netlify deployment
-- [ ] Medical Volunteers profiles: define the questionnaire and Guatemala in-country assignment tracking model before implementation
+- [x] Deployment: pushed the approved Medical Volunteers tab and Major Donors navigation rename to GitHub for Netlify deployment
+- [x] Medical Volunteers profiles: defined professional snapshot, clinical strengths, field-readiness, and Guatemala assignment tracking fields
+- [x] Medical Volunteers: include qualifying Possible, Confirmed, and Ticket Purchased attendees and show each full attendance status on their profile card
+- [x] Medical Volunteers profiles: added approved professional snapshot, clinical strengths, field-readiness, and Guatemala assignment sections in clickable dashboard cards
+- [ ] Deployment: push the approved Medical Volunteers profile dashboard to GitHub for Netlify deployment
 - [x] Deployment: pushed the approved lower-tier donor journey log to GitHub for Netlify deployment
 - [x] Tasks page: sort donor task cards from earliest outstanding task date to latest task date
 - [x] Major donor status: based active or inactive state solely on outreach within communication cadence and cleared Kirk Foundation’s stale inactive override after the June 2026 donor-packet contact

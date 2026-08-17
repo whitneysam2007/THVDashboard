@@ -84,6 +84,22 @@ export interface TripAttendee {
   confirmed?: boolean;
   purchasedTicket?: boolean;
   notes?: string;
+  medicalProfile?: MedicalVolunteerProfile;
+}
+
+export interface MedicalVolunteerProfile {
+  professionalRole?: string;
+  specialty?: string;
+  yearsExperience?: string;
+  bio?: string;
+  clinicalStrengths?: string[];
+  fieldReadiness?: string;
+  homeVisitComfort?: string;
+  assignmentPriorities?: string;
+  guatemalaRecommendations?: string;
+  thvAssignment?: string;
+  assignmentStatus?: string;
+  planningNotes?: string;
 }
 
 export interface Trip {

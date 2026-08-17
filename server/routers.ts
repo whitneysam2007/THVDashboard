@@ -8,11 +8,12 @@ import {
   getDonationsForDonor, insertDonation, deleteDonation, recalculateDonorTotal,
   getTasksForDonor, upsertTask, deleteTask, getAllTasks,
   getAllTrips, insertTrip, updateTripById, deleteTripById,
-  getAttendeesForTrip, insertTripAttendee, updateTripAttendee, deleteTripAttendee,
+  getAttendeesForTrip, getTripAttendeeById, insertTripAttendee, updateTripAttendee, deleteTripAttendee,
   getAllInitiatives, insertInitiative, updateInitiativeById, deleteInitiativeById, recalculateLastContactDate,
 } from "./db";
 import { nanoid } from "nanoid";
 import { tagsWithPortfolio } from '../shared/donorPortfolios';
+import { joinAttendeeNotes, splitAttendeeNotes } from './medicalProfileStorage';
 
 type TeamAccessRow = {
   email: string;
@@ -277,10 +278,10 @@ export const appRouter = router({
       return Promise.all(allTrips.map(async (t: any) => ({
         ...t,
         teamMembers: JSON.parse(t.teamMembers || '[]') as string[],
-        attendees: (await getAttendeesForTrip(t.id)).map((a: any) => ({
-          ...a,
-          skills: JSON.parse(a.skills || '[]') as string[],
-        })),
+        attendees: (await getAttendeesForTrip(t.id)).map((a: any) => {
+          const { notes, medicalProfile } = splitAttendeeNotes(a.notes);
+          return { ...a, notes: notes || undefined, skills: JSON.parse(a.skills || '[]') as string[], medicalProfile };
+        }),
       })));
     }),
 
@@ -328,9 +329,15 @@ export const appRouter = router({
       purchasedTicket: z.boolean().optional(),
       knowsAtTHV: z.array(z.string()).optional(),
       notes: z.string().optional(),
+      medicalProfile: z.object({
+        professionalRole: z.string().optional(), specialty: z.string().optional(), yearsExperience: z.string().optional(), bio: z.string().optional(),
+        clinicalStrengths: z.array(z.string()).optional(), fieldReadiness: z.string().optional(), homeVisitComfort: z.string().optional(),
+        assignmentPriorities: z.string().optional(), guatemalaRecommendations: z.string().optional(), thvAssignment: z.string().optional(),
+        assignmentStatus: z.string().optional(), planningNotes: z.string().optional(),
+      }).optional(),
     })).mutation(async ({ input }) => {
       const id = nanoid();
-      const { knowsAtTHV, isTeen, speaksSpanish, confirmed, purchasedTicket, ...rest } = input;
+      const { knowsAtTHV, isTeen, speaksSpanish, confirmed, purchasedTicket, medicalProfile, ...rest } = input;
       await insertTripAttendee({
         ...rest,
         id,
@@ -340,6 +347,7 @@ export const appRouter = router({
         confirmed: confirmed ? 1 : 0,
         purchasedTicket: purchasedTicket ? 1 : 0,
         knowsAtTHV: knowsAtTHV ? JSON.stringify(knowsAtTHV) : null,
+        notes: joinAttendeeNotes(rest.notes, medicalProfile),
       });
       return { id };
     }),
@@ -356,8 +364,14 @@ export const appRouter = router({
       purchasedTicket: z.boolean().optional(),
       knowsAtTHV: z.array(z.string()).optional(),
       notes: z.string().optional(),
+      medicalProfile: z.object({
+        professionalRole: z.string().optional(), specialty: z.string().optional(), yearsExperience: z.string().optional(), bio: z.string().optional(),
+        clinicalStrengths: z.array(z.string()).optional(), fieldReadiness: z.string().optional(), homeVisitComfort: z.string().optional(),
+        assignmentPriorities: z.string().optional(), guatemalaRecommendations: z.string().optional(), thvAssignment: z.string().optional(),
+        assignmentStatus: z.string().optional(), planningNotes: z.string().optional(),
+      }).optional(),
     })).mutation(async ({ input }) => {
-      const { id, knowsAtTHV, isTeen, speaksSpanish, confirmed, purchasedTicket, skills, ...rest } = input;
+      const { id, knowsAtTHV, isTeen, speaksSpanish, confirmed, purchasedTicket, skills, medicalProfile, ...rest } = input;
       const data: Record<string, unknown> = { ...rest };
       if (skills !== undefined) data.skills = JSON.stringify(skills);
       if (isTeen !== undefined) data.isTeen = isTeen ? 1 : 0;
@@ -365,6 +379,12 @@ export const appRouter = router({
       if (confirmed !== undefined) data.confirmed = confirmed ? 1 : 0;
       if (purchasedTicket !== undefined) data.purchasedTicket = purchasedTicket ? 1 : 0;
       if (knowsAtTHV !== undefined) data.knowsAtTHV = JSON.stringify(knowsAtTHV);
+      if (medicalProfile !== undefined || rest.notes !== undefined) {
+        const existing = await getTripAttendeeById(id);
+        if (!existing) throw new Error('Trip attendee not found.');
+        const current = splitAttendeeNotes((existing as any).notes);
+        data.notes = joinAttendeeNotes(rest.notes ?? current.notes, medicalProfile ?? current.medicalProfile);
+      }
       await updateTripAttendee(id, data as any);
       return { success: true };
     }),

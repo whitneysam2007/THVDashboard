@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isMedicalVolunteer, medicalVolunteersByTrip } from './medicalVolunteers';
+import { isMedicalVolunteer, medicalVolunteersByTrip, medicalVolunteerStatusLabel } from './medicalVolunteers';
 import type { TripAttendee } from './types';
 
 const attendee = (skills: string[]): TripAttendee => ({ id: skills.join('-'), name: 'Volunteer', skills });
@@ -20,5 +20,11 @@ describe('medical volunteers', () => {
     expect(groups).toHaveLength(1);
     expect(groups[0].trip.name).toBe('Spring Expedition');
     expect(groups[0].attendees).toHaveLength(1);
+  });
+
+  it('uses full, unambiguous labels for every roster status', () => {
+    expect(medicalVolunteerStatusLabel({ confirmed: false, purchasedTicket: false })).toBe('Possible attendee');
+    expect(medicalVolunteerStatusLabel({ confirmed: true, purchasedTicket: false })).toBe('Confirmed attendee');
+    expect(medicalVolunteerStatusLabel({ confirmed: true, purchasedTicket: true })).toBe('Ticket purchased');
   });
 });

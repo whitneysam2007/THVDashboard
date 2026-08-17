@@ -242,6 +242,12 @@ export async function getAttendeesForTrip(tripId: string) {
   return result.data ?? [];
 }
 
+export async function getTripAttendeeById(id: string) {
+  const result = await db().from('trip_attendees').select('*').eq('id', id).maybeSingle();
+  assertSuccess(result);
+  return result.data ?? null;
+}
+
 export async function insertTripAttendee(data: InsertRow) {
   assertSuccess(await db().from('trip_attendees').insert(clean(data)));
 }
