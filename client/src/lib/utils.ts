@@ -258,7 +258,7 @@ export function donorTypeLabel(type: string): string {
     'past': 'Past',
     'potential': 'Potential Donor',
   };
-  return map[type] ?? type;
+  return (map[type] ?? type).replace(/[()]/g, '');
 }
 
 /** Tier display label */
@@ -269,7 +269,7 @@ export function tierLabel(tier: string): string {
     'business': 'Business',
     'institution': 'Institution',
   };
-  return map[tier] ?? tier;
+  return (map[tier] ?? tier).replace(/[()]/g, '');
 }
 
 /** Format currency */

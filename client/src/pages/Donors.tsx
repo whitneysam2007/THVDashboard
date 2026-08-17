@@ -216,6 +216,8 @@ export default function Donors() {
                 ? manualTask.dueDate < new Date().toISOString().split('T')[0]
                 : overdue;
               const donorTotal = donor._total;
+              const isRecurringDonor = donor.type === 'recurring' || Boolean(donor.recurringAmount && donor.recurringFrequency);
+              const recurringAnnualAmount = isRecurringDonor ? expectedRecurringAnnualAmount([donor]) : 0;
 
             return (
               <button
@@ -233,14 +235,7 @@ export default function Donors() {
                       {donor.contactName ? <>{donor.contactName} · </> : ''}<span className="italic">{tierLabel(donor.tier)}</span>
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {donor.currentYearDonated && donor.currentYearDonated > 0 && (
-                      <span title={donor.thankYouLetterForCurrentYear ? `Thank-you card sent ${formatDate(donor.thankYouLetterForCurrentYear.completedDate)}` : `Thank-you card not marked sent for ${CURRENT_YEAR}`} aria-label="Thank-you card status">
-                        <Mail size={17} style={{ color: donor.thankYouLetterForCurrentYear ? 'oklch(0.50 0.13 145)' : 'oklch(0.50 0.18 250)' }} />
-                      </span>
-                    )}
-                    <StatusBadge status={donor.status} size="sm" />
-                  </div>
+                  <StatusBadge status={donor.status} size="sm" />
                 </div>
 
                 <hr className="thv-rule mb-3" />
@@ -273,13 +268,25 @@ export default function Donors() {
 
                   {/* Total donated + tags */}
                   <div className="flex items-center justify-between pt-1">
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-xs font-semibold" style={{ color: 'oklch(0.22 0.018 55)' }}>
-                        {formatCurrency(donorTotal)}
-                      </span>
-                      <span className="text-[10px]" style={{ color: 'oklch(0.62 0.012 65)' }}>
-                        total lifetime amount given
-                      </span>
+                    <div className="flex flex-wrap gap-x-5 gap-y-1">
+                      {isRecurringDonor && (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-xs font-semibold" style={{ color: 'oklch(0.22 0.018 55)' }}>
+                            {formatCurrency(recurringAnnualAmount)}
+                          </span>
+                          <span className="text-[10px]" style={{ color: 'oklch(0.62 0.012 65)' }}>
+                            recurring annual amount
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-xs font-semibold" style={{ color: 'oklch(0.22 0.018 55)' }}>
+                          {formatCurrency(donorTotal)}
+                        </span>
+                        <span className="text-[10px]" style={{ color: 'oklch(0.62 0.012 65)' }}>
+                          lifetime amount given
+                        </span>
+                      </div>
                     </div>
                     <div className="flex items-center gap-1.5">
                       {donor.naruCircle && (
@@ -305,7 +312,7 @@ export default function Donors() {
                     </div>
                   </div>
 
-                  {donor.currentYearDonated && donor.currentYearDonated > 0 && (
+                  {Boolean(donor.currentYearDonated && donor.currentYearDonated > 0) && (
                     <div className="mt-3 pt-2 border-t border-[oklch(0.89_0.012_75)] flex items-center gap-1.5">
                       <Mail size={13} style={{ color: donor.thankYouLetterForCurrentYear ? 'oklch(0.42 0.13 145)' : 'oklch(0.50 0.18 250)' }} />
                       <span className="text-xs" style={{ color: donor.thankYouLetterForCurrentYear ? 'oklch(0.42 0.13 145)' : 'oklch(0.38 0.14 250)' }}>

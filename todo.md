@@ -93,10 +93,20 @@
 - [x] Thank-you letters: replaced annual Brenley deadline tasks with a reversible blue-to-green 2026 letter indicator shown only for donors with a 2026 donation across all tiers
 - [x] New donor journey: removed the automatic welcome thank-you note so only acknowledgment/tax letter and newsletter tasks appear
 - [x] Deployment: pushed the approved thank-you letter indicators and simplified donor journey to GitHub for Netlify deployment
-- [ ] Deployment verification: confirm Netlify published commit d5fae84 and the live thank-you letter indicators load; sandbox network requests timed out repeatedly
-- [ ] Thank-you letters: mark the specified major donors and USANA as sent in 2026 using the provided dates and gift notes
+- [x] Deployment verification: owner confirmed the live thank-you letter indicators load after commit d5fae84 despite sandbox network timeouts
+- [x] Thank-you letters: marked all specified major donors and USANA as sent in 2026 using provided dates, approved first-of-month dates, or USANA’s latest 2026 gift date
+- [x] Thank You Tracker: added a synced table with name, address, amount given, date given, letter state, single sent action, and bulk selected-sent action
+- [x] Thank You Tracker: supports reversible sent dates that update the corresponding donor-card indicator across all portfolios
+- [x] Major donor cards: removed stray zero artifacts and the duplicate top-right blue envelope, keeping thank-you state only in the lower card section
+- [x] Major donor cards: consistently show recurring annual amount and lifetime amount given on recurring cards
+- [ ] Deployment: push the Thank You Tracker and approved major-donor card cleanup to GitHub for Netlify deployment
+- [x] Tasks page: sort donor task cards from earliest outstanding task date to latest task date
+- [x] Major donor status: based active or inactive state solely on outreach within communication cadence and cleared Kirk Foundation’s stale inactive override after the June 2026 donor-packet contact
+- [x] Major donor cards: labeled recurring annual amount and lifetime amount given for recurring donors
+- [x] Major donor cards: removed stray parenthesis display characters from Jill Connelly’s card labels
+- [x] Thank-you letters: ensured every major donor with a 2026 donation shows blue unless a verified green card record exists
 - [x] Major donor cards: added an explicit thank-you letter sent or not-sent label, including the sent date, beside the 2026 envelope indicator
-- [ ] Deployment: push the dated major-donor thank-you letter labels to GitHub for Netlify deployment
+- [x] Deployment: pushed the dated major-donor thank-you letter labels to GitHub for Netlify deployment
 - [x] Deployment: push the reviewed donor journey and Recurring donors filter updates to GitHub for Netlify deployment
 - [x] Replace sandbox password login with a development-only read-only dashboard preview for reviewing Trips changes before GitHub deployment
 - [x] Add a development-only read-only bypass for sandbox previews while preserving production password enforcement

@@ -51,9 +51,14 @@ export async function getAllDonors() {
 
   const currentYear = new Date().getFullYear();
   const totalsByDonor = new Map<string, number>();
+  const latestDonationByDonor = new Map<string, { amountCents: number; date: string }>();
   for (const donation of donationResult.data ?? []) {
     if (String(donation.date).startsWith(`${currentYear}-`)) {
       totalsByDonor.set(donation.donorId, (totalsByDonor.get(donation.donorId) ?? 0) + Number(donation.amountCents ?? 0));
+      const previous = latestDonationByDonor.get(donation.donorId);
+      if (!previous || String(donation.date) > previous.date) {
+        latestDonationByDonor.set(donation.donorId, { amountCents: Number(donation.amountCents ?? 0), date: String(donation.date) });
+      }
     }
   }
   const tasksByDonor = new Map<string, any[]>();
@@ -70,6 +75,7 @@ export async function getAllDonors() {
     return {
       ...donor,
       currentYearDonatedCents: totalsByDonor.get(donor.id) ?? 0,
+      currentYearLatestDonation: latestDonationByDonor.get(donor.id),
       thankYouLetterForCurrentYear: thankYou ? { completedDate: thankYou.completedDate, completedBy: thankYou.completedBy ?? undefined } : undefined,
       nextManualTask: nextOutstandingManualTask(tasks),
     };

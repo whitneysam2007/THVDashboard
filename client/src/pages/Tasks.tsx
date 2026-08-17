@@ -124,6 +124,11 @@ export default function Tasks() {
   for (const [id, g] of Array.from(byDonor.entries())) {
     if (g.tasks.length === 0 && g.done.length === 0) byDonor.delete(id);
   }
+  const sortedDonorGroups = Array.from(byDonor.entries()).sort(([, a], [, b]) => {
+    const aDate = a.tasks[0]?.dueDate ?? '9999-12-31';
+    const bDate = b.tasks[0]?.dueDate ?? '9999-12-31';
+    return aDate.localeCompare(bDate) || a.donorName.localeCompare(b.donorName);
+  });
 
   const handleComplete = async (task: TaskRow) => {
     await upsertTaskMut.mutateAsync({
@@ -240,7 +245,7 @@ export default function Tasks() {
         )}
 
         <div className="space-y-4">
-          {Array.from(byDonor.entries()).map(([donorId, { donorName, tasks, done }]) => {
+          {sortedDonorGroups.map(([donorId, { donorName, tasks, done }]) => {
             const isCollapsed = collapsedDonors.has(donorId);
             const overdueForDonor = tasks.filter(t => isOverdue(t.dueDate, t.completedDate)).length;
             const showDoneForDonor = expandedDone.has(donorId);
