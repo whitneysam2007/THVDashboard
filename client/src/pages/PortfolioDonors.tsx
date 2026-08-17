@@ -7,7 +7,7 @@ import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { ChevronRight, DollarSign, Mail, MapPin, MessageCircle, Plus, RefreshCw, Send, X } from 'lucide-react';
+import { AlertTriangle, ChevronRight, DollarSign, Mail, MapPin, MessageCircle, Plus, RefreshCw, Send, Trash2, X } from 'lucide-react';
 import ThankYouLetterControl from '@/components/ThankYouLetterControl';
 import { useAuth } from '@/_core/hooks/useAuth';
 
@@ -45,7 +45,7 @@ function Card({ donor, onOpen, portfolio }: { donor: Donor; onOpen: () => void; 
 }
 
 function DonorDetail({ donor, portfolio, onClose }: { donor: Donor; portfolio: PortfolioDonorsProps['portfolio']; onClose: () => void }) {
-  const { updateDonor, addDonation, addActivity } = useDashboard();
+  const { updateDonor, addDonation, addActivity, deleteDonor } = useDashboard();
   const { user } = useAuth();
   const utils = trpc.useUtils();
   const detailQuery = trpc.donors.getWithDetails.useQuery({ id: donor.id });
@@ -56,6 +56,8 @@ function DonorDetail({ donor, portfolio, onClose }: { donor: Donor; portfolio: P
   const [saving, setSaving] = useState(false);
   const [interactionNote, setInteractionNote] = useState('');
   const [savingInteraction, setSavingInteraction] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const transactions = detailQuery.data?.donations ?? [];
   const interactions = [...(detailQuery.data?.activities ?? [])].sort((a: any, b: any) => String(b.date).localeCompare(String(a.date)));
@@ -89,6 +91,14 @@ function DonorDetail({ donor, portfolio, onClose }: { donor: Donor; portfolio: P
     } finally { setSavingInteraction(false); }
   };
 
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await deleteDonor(donor.id);
+      onClose();
+    } finally { setDeleting(false); }
+  };
+
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose}>
@@ -98,8 +108,18 @@ function DonorDetail({ donor, portfolio, onClose }: { donor: Donor; portfolio: P
             <p className="text-xs uppercase tracking-[0.16em]" style={{ color: 'oklch(0.50 0.16 350)' }}>{donorPortfolioLabel(portfolio)}</p>
             <h1 className="font-display text-3xl mt-1" style={{ color: 'oklch(0.22 0.018 55)' }}>{donor.name}</h1>
           </div>
-          <button aria-label="Close donor detail" onClick={onClose} className="p-2 rounded hover:bg-[oklch(0.94_0.012_78)]"><X size={20} /></button>
+          <div className="flex items-center gap-1">
+            <button aria-label="Delete donor" title="Delete donor" onClick={() => setConfirmDelete(value => !value)} className="rounded p-2 text-[oklch(0.48_0.18_27)] hover:bg-[oklch(0.96_0.04_27)]"><Trash2 size={18} /></button>
+            <button aria-label="Close donor detail" onClick={onClose} className="p-2 rounded hover:bg-[oklch(0.94_0.012_78)]"><X size={20} /></button>
+          </div>
         </div>
+
+        {confirmDelete && <div className="mt-5 rounded-lg border-2 border-[oklch(0.55_0.20_27)] bg-[oklch(0.97_0.04_27)] p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle size={18} className="mt-0.5 shrink-0 text-[oklch(0.45_0.20_27)]" />
+            <div className="flex-1"><p className="text-sm font-semibold text-[oklch(0.30_0.18_27)]">Delete {donor.name}?</p><p className="mt-1 text-xs text-[oklch(0.45_0.18_27)]">This permanently removes the donor, donation history, and journey log. It cannot be undone.</p><div className="mt-3 flex gap-2"><Button size="sm" disabled={deleting} onClick={() => void handleDelete()} className="bg-[oklch(0.45_0.20_27)] text-white hover:bg-[oklch(0.40_0.20_27)]">{deleting ? 'Deleting…' : 'Yes, delete permanently'}</Button><Button size="sm" variant="outline" disabled={deleting} onClick={() => setConfirmDelete(false)}>Cancel</Button></div></div>
+          </div>
+        </div>}
 
         <div className="mt-6 grid sm:grid-cols-2 gap-3 text-sm">
           {donor.email && <p className="flex gap-2"><Mail size={16} className="mt-0.5" />{donor.email}</p>}

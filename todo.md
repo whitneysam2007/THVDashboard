@@ -100,12 +100,15 @@
 - [x] Major donor cards: removed stray zero artifacts and the duplicate top-right blue envelope, keeping thank-you state only in the lower card section
 - [x] Major donor cards: consistently show recurring annual amount and lifetime amount given on recurring cards
 - [x] Deployment: pushed the Thank You Tracker and approved major-donor card cleanup to GitHub for Netlify deployment
-- [ ] Deployment verification: confirm the live Thank You Tracker and cleaned major donor cards after commit 4d293a4; sandbox network check timed out
+- [x] Deployment verification: confirmed the public Netlify login page is reachable after the lower-tier journey release
+- [ ] Deployment verification: confirm after sign-in that Thank You Tracker is present, blue rows sort before green, top-right envelopes and stray zero artifacts are gone, and recurring cards show both annual and lifetime amounts
 - [x] Monthly Giving: clarified that expected annual giving is included in the major donor page’s expected annual recurring amount
 - [x] Deployment: pushed the approved Monthly Giving summary clarification and blue-first tracker ordering to GitHub for Netlify deployment
 - [x] Thank You Tracker: sorted blue not-sent entries before green sent entries
 - [x] Lower-tier donor journeys: added a simple interaction log to Monthly Giving and Donors 500–5K without tasks, due dates, or cadence tracking
-- [ ] Deployment: push the approved lower-tier donor journey log to GitHub for Netlify deployment
+- [x] Lower-tier donor cards: added a confirmation-protected Delete donor control to Monthly Giving and Donors 500–5K details
+- [ ] Deployment: push the approved lower-tier donor deletion controls to GitHub for Netlify deployment
+- [x] Deployment: pushed the approved lower-tier donor journey log to GitHub for Netlify deployment
 - [x] Tasks page: sort donor task cards from earliest outstanding task date to latest task date
 - [x] Major donor status: based active or inactive state solely on outreach within communication cadence and cleared Kirk Foundation’s stale inactive override after the June 2026 donor-packet contact
 - [x] Major donor cards: labeled recurring annual amount and lifetime amount given for recurring donors
