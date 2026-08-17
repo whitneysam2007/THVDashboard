@@ -304,6 +304,17 @@ export default function Donors() {
                       )}
                     </div>
                   </div>
+
+                  {donor.currentYearDonated && donor.currentYearDonated > 0 && (
+                    <div className="mt-3 pt-2 border-t border-[oklch(0.89_0.012_75)] flex items-center gap-1.5">
+                      <Mail size={13} style={{ color: donor.thankYouLetterForCurrentYear ? 'oklch(0.42 0.13 145)' : 'oklch(0.50 0.18 250)' }} />
+                      <span className="text-xs" style={{ color: donor.thankYouLetterForCurrentYear ? 'oklch(0.42 0.13 145)' : 'oklch(0.38 0.14 250)' }}>
+                        {donor.thankYouLetterForCurrentYear
+                          ? `Thank-you letter sent ${formatDate(donor.thankYouLetterForCurrentYear.completedDate)}`
+                          : `Thank-you letter not sent in ${CURRENT_YEAR}`}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </button>
             );

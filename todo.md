@@ -92,7 +92,11 @@
 - [x] Deployment verification: owner confirmed the live Donors 500–5K and Monthly Giving tabs display the expected 9 and 13 imported cards after commit fff46d4
 - [x] Thank-you letters: replaced annual Brenley deadline tasks with a reversible blue-to-green 2026 letter indicator shown only for donors with a 2026 donation across all tiers
 - [x] New donor journey: removed the automatic welcome thank-you note so only acknowledgment/tax letter and newsletter tasks appear
-- [ ] Deployment: push the approved thank-you letter indicators and simplified donor journey to GitHub for Netlify deployment
+- [x] Deployment: pushed the approved thank-you letter indicators and simplified donor journey to GitHub for Netlify deployment
+- [ ] Deployment verification: confirm Netlify published commit d5fae84 and the live thank-you letter indicators load; sandbox network requests timed out repeatedly
+- [ ] Thank-you letters: mark the specified major donors and USANA as sent in 2026 using the provided dates and gift notes
+- [x] Major donor cards: added an explicit thank-you letter sent or not-sent label, including the sent date, beside the 2026 envelope indicator
+- [ ] Deployment: push the dated major-donor thank-you letter labels to GitHub for Netlify deployment
 - [x] Deployment: push the reviewed donor journey and Recurring donors filter updates to GitHub for Netlify deployment
 - [x] Replace sandbox password login with a development-only read-only dashboard preview for reviewing Trips changes before GitHub deployment
 - [x] Add a development-only read-only bypass for sandbox previews while preserving production password enforcement
