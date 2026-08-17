@@ -12,6 +12,7 @@ import Tasks from "./pages/Tasks";
 import TeamAccess from "./pages/TeamAccess";
 import PortfolioDonors from "./pages/PortfolioDonors";
 import ThankYouTracker from "./pages/ThankYouTracker";
+import MedicalVolunteers from "./pages/MedicalVolunteers";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "./_core/hooks/useAuth";
 import Login from './pages/Login';
@@ -51,6 +52,7 @@ function Router() {
       <Route path="/donors-500-5k" component={() => <AuthGuard><PortfolioDonors portfolio="donors-500-5k" /></AuthGuard>} />
       <Route path="/monthly-giving" component={() => <AuthGuard><PortfolioDonors portfolio="monthly-giving" /></AuthGuard>} />
       <Route path="/thank-you-tracker" component={() => <AuthGuard><ThankYouTracker /></AuthGuard>} />
+      <Route path="/medical-volunteers" component={() => <AuthGuard><MedicalVolunteers /></AuthGuard>} />
       <Route path="/trips" component={() => <AuthGuard><Trips /></AuthGuard>} />
       <Route path="/initiatives" component={() => <AuthGuard><Initiatives /></AuthGuard>} />
       <Route path="/tasks" component={() => <AuthGuard><Tasks /></AuthGuard>} />

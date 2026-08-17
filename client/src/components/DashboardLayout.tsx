@@ -6,16 +6,17 @@ import { Link, useLocation } from 'wouter';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import {
-  Users, Plane, BarChart2, CheckSquare, LogOut, Menu, X, ChevronRight, ShieldCheck, KeyRound, HeartHandshake, RefreshCw, Mail
+  Users, Plane, BarChart2, CheckSquare, LogOut, Menu, X, ChevronRight, ShieldCheck, KeyRound, HeartHandshake, RefreshCw, Mail, Stethoscope
 } from 'lucide-react';
 import { ChangePasswordDialog } from '@/components/ChangePasswordDialog';
 
 const NAV = [
-  { href: '/', label: 'Donors', icon: Users },
+  { href: '/', label: 'Major Donors', icon: Users },
   { href: '/donors-500-5k', label: 'Donors 500–5K', icon: HeartHandshake },
   { href: '/monthly-giving', label: 'Monthly Giving', icon: RefreshCw },
   { href: '/thank-you-tracker', label: 'Thank You Tracker', icon: Mail },
   { href: '/trips', label: 'Trips', icon: Plane },
+  { href: '/medical-volunteers', label: 'Medical Volunteers', icon: Stethoscope },
   { href: '/initiatives', label: 'Initiatives', icon: BarChart2 },
   { href: '/tasks', label: 'Tasks', icon: CheckSquare },
 ];

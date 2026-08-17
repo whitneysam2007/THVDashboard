@@ -107,7 +107,11 @@
 - [x] Thank You Tracker: sorted blue not-sent entries before green sent entries
 - [x] Lower-tier donor journeys: added a simple interaction log to Monthly Giving and Donors 500–5K without tasks, due dates, or cadence tracking
 - [x] Lower-tier donor cards: added a confirmation-protected Delete donor control to Monthly Giving and Donors 500–5K details
-- [ ] Deployment: push the approved lower-tier donor deletion controls to GitHub for Netlify deployment
+- [x] Deployment: pushed the approved lower-tier donor deletion controls to GitHub for Netlify deployment
+- [x] Medical Volunteers: added an expedition-grouped profile tab for trip attendees with Medical, Nurse, Doctor, OB, or Radiology skills
+- [x] Navigation: renamed the primary Donors tab to Major Donors
+- [ ] Deployment: push the approved Medical Volunteers tab and Major Donors navigation rename to GitHub for Netlify deployment
+- [ ] Medical Volunteers profiles: define the questionnaire and Guatemala in-country assignment tracking model before implementation
 - [x] Deployment: pushed the approved lower-tier donor journey log to GitHub for Netlify deployment
 - [x] Tasks page: sort donor task cards from earliest outstanding task date to latest task date
 - [x] Major donor status: based active or inactive state solely on outreach within communication cadence and cleared Kirk Foundation’s stale inactive override after the June 2026 donor-packet contact
