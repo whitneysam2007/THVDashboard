@@ -22,7 +22,12 @@ export default function ThankYouTracker() {
 
   const donors = useMemo(() => store.donors
     .filter(donor => (donor.currentYearDonated ?? 0) > 0 && donor.currentYearLatestDonation)
-    .sort((a, b) => a.name.localeCompare(b.name)), [store.donors]);
+    .sort((a, b) => {
+      const aSent = Boolean(a.thankYouLetterForCurrentYear);
+      const bSent = Boolean(b.thankYouLetterForCurrentYear);
+      if (aSent !== bSent) return aSent ? 1 : -1;
+      return a.name.localeCompare(b.name);
+    }), [store.donors]);
   const allSelected = donors.length > 0 && donors.every(donor => selected.has(donor.id));
 
   const refresh = () => {
