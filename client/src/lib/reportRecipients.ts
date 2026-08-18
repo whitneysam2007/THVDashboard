@@ -8,6 +8,8 @@ export const REPORTS: Record<ReportKey, { title: string; taskId: string; label: 
   'annual-report-2027': { title: '2027 Annual Report (2026 year)', taskId: 'annual-report-2027', label: 'Send 2027 annual report (2026 report)', dueDate: '2027-03-01', amountYear: 2026, amountLabel: '2026 giving' },
 };
 
-export function reportYearGiving(donor: Pick<Donor, 'donations'>, year: number) {
+export function reportYearGiving(donor: Pick<Donor, 'donations' | 'donationYearTotals'>, year: number) {
+  const reportedTotal = donor.donationYearTotals?.[String(year)];
+  if (typeof reportedTotal === 'number') return reportedTotal;
   return donor.donations.filter(donation => donation.date.startsWith(`${year}-`)).reduce((sum, donation) => sum + donation.amount, 0);
 }

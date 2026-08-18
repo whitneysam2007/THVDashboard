@@ -62,6 +62,8 @@ export interface Donor {
   // Derived from the database for the donor-list dashboard header; not persisted
   // on the donor record itself.
   currentYearDonated?: number;
+  // Derived from recorded donation history for calendar-year reporting grids.
+  donationYearTotals?: Record<string, number>;
   currentYearLatestDonation?: { amount: number; date: string };
   // Derived from the donor task log for the current year’s handwritten thank-you card.
   thankYouLetterForCurrentYear?: { completedDate: string; completedBy?: string };

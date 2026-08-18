@@ -51,8 +51,15 @@ export async function getAllDonors() {
 
   const currentYear = new Date().getFullYear();
   const totalsByDonor = new Map<string, number>();
+  const totalsByDonorAndYear = new Map<string, Record<string, number>>();
   const latestDonationByDonor = new Map<string, { amountCents: number; date: string }>();
   for (const donation of donationResult.data ?? []) {
+    const donationYear = String(donation.date).slice(0, 4);
+    if (/^\d{4}$/.test(donationYear)) {
+      const yearlyTotals = totalsByDonorAndYear.get(donation.donorId) ?? {};
+      yearlyTotals[donationYear] = (yearlyTotals[donationYear] ?? 0) + Number(donation.amountCents ?? 0);
+      totalsByDonorAndYear.set(donation.donorId, yearlyTotals);
+    }
     if (String(donation.date).startsWith(`${currentYear}-`)) {
       totalsByDonor.set(donation.donorId, (totalsByDonor.get(donation.donorId) ?? 0) + Number(donation.amountCents ?? 0));
       const previous = latestDonationByDonor.get(donation.donorId);
@@ -75,6 +82,7 @@ export async function getAllDonors() {
     return {
       ...donor,
       currentYearDonatedCents: totalsByDonor.get(donor.id) ?? 0,
+      donationYearTotalsCents: totalsByDonorAndYear.get(donor.id) ?? {},
       currentYearLatestDonation: latestDonationByDonor.get(donor.id),
       thankYouLetterForCurrentYear: thankYou ? { completedDate: thankYou.completedDate, completedBy: thankYou.completedBy ?? undefined } : undefined,
       nextManualTask: nextOutstandingManualTask(tasks),

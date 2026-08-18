@@ -9,4 +9,8 @@ describe('report recipient helpers', () => {
   it('sums only the requested calendar year', () => {
     expect(reportYearGiving({ donations: [{ id: 'a', date: '2025-12-31', amount: 500 }, { id: 'b', date: '2026-01-01', amount: 700 }] }, 2025)).toBe(500);
   });
+
+  it('uses the actual server-provided calendar-year total when recipient rows do not carry donation history', () => {
+    expect(reportYearGiving({ donations: [], donationYearTotals: { '2026': 2400 } }, 2026)).toBe(2400);
+  });
 });

@@ -190,6 +190,10 @@
 - [x] Trip to-do list: keep the new-task fields hidden until + Add to-do is selected
 - [x] Trip to-do list: place + Add to-do immediately to the left of Show completed
 - [x] Trip to-do list: show the expanded entry form directly beneath the header controls
+- [x] Tasks reporting grids: display actual recorded 2026 giving for 2027 Tax Receipt and 2027 Annual Report recipients
+- [x] Tasks reporting grids: fix $0 values so each recipient shows actual 2026 recorded giving
+- [x] USANA Garden Tower: add per-expedition Funds received from USANA checkboxes and sum only checked grants in the header total
+- [x] Deployment: push the verified report-giving and USANA receipt updates to GitHub for Netlify deployment
 - [x] Deployment: pushed the approved lower-tier donor journey log to GitHub for Netlify deployment
 - [x] Tasks page: sort donor task cards from earliest outstanding task date to latest task date
 - [x] Major donor status: based active or inactive state solely on outreach within communication cadence and cleared Kirk Foundation’s stale inactive override after the June 2026 donor-packet contact
