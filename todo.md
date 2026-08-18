@@ -194,6 +194,11 @@
 - [x] Tasks reporting grids: fix $0 values so each recipient shows actual 2026 recorded giving
 - [x] USANA Garden Tower: add per-expedition Funds received from USANA checkboxes and sum only checked grants in the header total
 - [x] Deployment: push the verified report-giving and USANA receipt updates to GitHub for Netlify deployment
+- [x] Trips Docs from Guate Team: add an internal THV-only per-trip upload library for Guatemala team materials with open/download access
+- [x] Trips Docs from Guate Team: store document metadata with the trip and support Garden Tower, family-market, home-visit, and other reference files without external sharing
+- [ ] Deployment: push the completed Docs from Guate Team workspace update to GitHub for Netlify deployment
+- [x] Deployment: hold the combined GitHub push until the Docs from Guate Team and attendee reassignment work are complete and reviewed
+- [x] Trip attendees: add an expanded-card Go on a later trip control that asks which future trip and moves the existing attendee record without losing their information
 - [x] Deployment: pushed the approved lower-tier donor journey log to GitHub for Netlify deployment
 - [x] Tasks page: sort donor task cards from earliest outstanding task date to latest task date
 - [x] Major donor status: based active or inactive state solely on outreach within communication cadence and cleared Kirk Foundation’s stale inactive override after the June 2026 donor-packet contact

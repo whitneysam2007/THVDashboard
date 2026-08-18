@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { nanoid } from 'nanoid';
 import { getSupabaseServerClient } from './supabase';
-import { defaultUsanaProject, getGardenTowerPdfDownloadUrl, getUsanaProject, saveUsanaProject, uploadGardenTowerPdf, USANA_BUCKET } from './usanaStorage';
+import { defaultUsanaProject, getGardenTowerPdfDownloadUrl, getGuateTeamDocumentDownloadUrl, getUsanaProject, saveUsanaProject, uploadGardenTowerPdf, uploadGuateTeamDocument, USANA_BUCKET } from './usanaStorage';
 
 const cleanupKeys: string[] = [];
 
@@ -27,5 +27,13 @@ describe('USANA Supabase Storage integration', () => {
 
     expect(uploaded.key).toMatch(/^usana\/garden-tower\/integration-/);
     await expect(getGardenTowerPdfDownloadUrl(uploaded.key)).resolves.toMatch(/^https?:\/\//);
+  });
+
+  it('uploads an isolated internal Guatemala team document and obtains a download URL', async () => {
+    const uploaded = await uploadGuateTeamDocument(`integration-${nanoid()}`, 'Family Market List.csv', Buffer.from('family,items\nLópez,beans'), 'text/csv');
+    cleanupKeys.push(uploaded.key);
+
+    expect(uploaded.key).toMatch(/^trips\/guate-team\/integration-/);
+    await expect(getGuateTeamDocumentDownloadUrl(uploaded.key)).resolves.toMatch(/^https?:\/\//);
   });
 });

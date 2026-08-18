@@ -15,7 +15,7 @@ import { nanoid } from "nanoid";
 import { tagsWithPortfolio } from '../shared/donorPortfolios';
 import { joinAttendeeNotes, splitAttendeeNotes } from './medicalProfileStorage';
 import { joinTripNotes, splitTripNotes } from './tripOperationsStorage';
-import { getGardenTowerPdfDownloadUrl, getUsanaProject, saveUsanaProject, uploadGardenTowerPdf } from './usanaStorage';
+import { getGardenTowerPdfDownloadUrl, getGuateTeamDocumentDownloadUrl, getUsanaProject, saveUsanaProject, uploadGardenTowerPdf, uploadGuateTeamDocument } from './usanaStorage';
 
 type TeamAccessRow = {
   email: string;
@@ -383,6 +383,16 @@ export const appRouter = router({
     getGardenTowerDocumentUrl: protectedProcedure.input(z.object({ key: z.string().min(1) }))
       .query(({ input }) => getGardenTowerPdfDownloadUrl(input.key)),
 
+    uploadGuateTeamDocument: protectedProcedure.input(z.object({
+      tripId: z.string(),
+      fileName: z.string().min(1).max(160),
+      mimeType: z.string().min(1).max(160),
+      base64: z.string().min(1).max(22_000_000),
+    })).mutation(({ input }) => uploadGuateTeamDocument(input.tripId, input.fileName, Buffer.from(input.base64, 'base64'), input.mimeType)),
+
+    getGuateTeamDocumentUrl: protectedProcedure.input(z.object({ key: z.string().min(1) }))
+      .mutation(({ input }) => getGuateTeamDocumentDownloadUrl(input.key)),
+
     delete: protectedProcedure.input(z.object({ id: z.string() })).mutation(async ({ input }) => {
       await deleteTripById(input.id);
       return { success: true };
@@ -425,6 +435,7 @@ export const appRouter = router({
 
     updateAttendee: protectedProcedure.input(z.object({
       id: z.string(),
+      tripId: z.string().optional(),
       name: z.string().optional(),
       email: z.string().optional(),
       phone: z.string().optional(),

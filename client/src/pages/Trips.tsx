@@ -17,7 +17,7 @@ import { TripItinerary } from '@/components/TripItinerary';
 import { Plus, Plane, Calendar, Users, X, Edit2, Check, Trash2, Mail, Phone, ChevronDown, ChevronUp } from 'lucide-react';
 import { nanoid } from 'nanoid';
 import { jsPDF } from 'jspdf';
-import type { TripExpense, TripFlightDetails, TripOperations, TripPlanningTask } from '../../../shared/tripOperations';
+import type { TripExpense, TripFlightDetails, TripGuateTeamDocument, TripOperations, TripPlanningTask } from '../../../shared/tripOperations';
 
 const SKILLS = ['Medical', 'Nurse', 'Doctor', 'OB', 'Radiology', 'Teaching', 'Translation', 'Photography', 'Volunteer'];
 const TEAM_MEMBERS = ['Liz', 'Lauren', 'Anna', 'Brenley', 'Emily', 'Amy', 'Kirsten'];
@@ -55,6 +55,51 @@ function FlightDetailsCard({ editor, onClose }: { editor: FlightEditor; onClose:
 }
 
 type FlightTraveler = { name: string; flight?: TripFlightDetails };
+
+const GUATE_DOCUMENT_CATEGORIES: TripGuateTeamDocument['category'][] = ['Garden Tower', 'Family market list', 'Home visits', 'Other'];
+
+function fileToBase64(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read that file.'));
+    reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '');
+    reader.readAsDataURL(file);
+  });
+}
+
+function GuateTeamDocuments({ trip, operations, onSave }: { trip: Trip; operations: TripOperations; onSave: (updates: Partial<TripOperations>) => void }) {
+  const [category, setCategory] = useState<TripGuateTeamDocument['category']>('Other');
+  const [file, setFile] = useState<File | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const upload = trpc.trips.uploadGuateTeamDocument.useMutation();
+  const getDownloadUrl = trpc.trips.getGuateTeamDocumentUrl.useMutation();
+  const documents = operations.guateTeamDocuments ?? [];
+
+  const uploadSelected = async () => {
+    if (!file) return;
+    setMessage(null);
+    try {
+      const base64 = await fileToBase64(file);
+      const uploaded = await upload.mutateAsync({ tripId: trip.id, fileName: file.name, mimeType: file.type || 'application/pdf', base64 });
+      onSave({ guateTeamDocuments: [...documents, { id: nanoid(), name: file.name, category, key: uploaded.key, mimeType: file.type, uploadedAt: new Date().toISOString() }] });
+      setFile(null);
+      setMessage('Document uploaded to this trip.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Could not upload that document.');
+    }
+  };
+
+  const openDocument = async (document: TripGuateTeamDocument) => {
+    try {
+      const url = await getDownloadUrl.mutateAsync({ key: document.key });
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Could not open that document.');
+    }
+  };
+
+  return <div className="space-y-4 pt-3"><div className="rounded-lg border border-[oklch(0.84_0.018_75)] bg-[oklch(0.975_0.012_80)] p-4"><p className="font-medium text-sm text-[oklch(0.22_0.018_55)]">Add a Guatemala team document</p><p className="mt-1 text-xs text-[oklch(0.52_0.022_65)]">Upload Garden Tower plans, family-market lists, home-visit materials, and other local team references.</p><div className="mt-3 grid gap-2 sm:grid-cols-[180px_1fr_auto]"><select aria-label="Document category" value={category} onChange={event => setCategory(event.target.value as TripGuateTeamDocument['category'])} className="h-9 rounded border border-[oklch(0.80_0.018_75)] bg-white px-2 text-sm">{GUATE_DOCUMENT_CATEGORIES.map(option => <option key={option} value={option}>{option}</option>)}</select><Input aria-label="Choose Guatemala team document" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png" onChange={event => setFile(event.target.files?.[0] ?? null)} /><Button size="sm" disabled={!file || upload.isPending} onClick={() => void uploadSelected()}>{upload.isPending ? 'Uploading…' : 'Upload file'}</Button></div>{message && <p className="mt-2 text-xs text-[oklch(0.42_0.018_55)]">{message}</p>}</div>{documents.length ? <div className="space-y-2">{documents.map(document => <div key={document.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[oklch(0.88_0.018_75)] bg-white p-3"><div><p className="text-sm font-medium text-[oklch(0.22_0.018_55)]">{document.name}</p><p className="mt-0.5 text-xs text-[oklch(0.52_0.022_65)]">{document.category} · Uploaded {formatDate(document.uploadedAt.slice(0, 10))}</p></div><Button size="sm" variant="outline" disabled={getDownloadUrl.isPending} onClick={() => void openDocument(document)}>{getDownloadUrl.isPending ? 'Opening…' : 'Open / download'}</Button></div>)}</div> : <p className="rounded-lg border border-dashed border-[oklch(0.84_0.018_75)] px-4 py-7 text-center text-sm italic text-[oklch(0.52_0.022_65)]">No Guatemala team documents have been added to this trip yet.</p>}</div>;
+}
 
 function downloadFlightCompilationPdf(trip: Trip, travelers: FlightTraveler[]) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'letter' });
@@ -113,6 +158,9 @@ function AttendeeSection({ trip, onSaveOperations }: { trip: Trip; onSaveOperati
   const attendees = trip.attendees ?? [];
   const { store } = useDashboard();
   const donorTripAttendees = store.donors.filter(donor => donor.tripId === trip.id);
+  const tripOptions = [...store.trips]
+    .filter(candidate => candidate.id === trip.id || candidate.startDate >= trip.startDate)
+    .sort((first, second) => first.startDate.localeCompare(second.startDate));
   const roster = summarizeTripRoster(trip);
   const leaders = getTripLeaders(trip.teamMembers, trip.operations);
   const totalTripNumber = leaders.length + roster.travelingGuestCount;
@@ -122,6 +170,7 @@ function AttendeeSection({ trip, onSaveOperations }: { trip: Trip; onSaveOperati
   const updateAttendeeMut = trpc.trips.updateAttendee.useMutation({ onSuccess: () => utils.trips.list.invalidate() });
   const deleteAttendeeMut = trpc.trips.deleteAttendee.useMutation({ onSuccess: () => utils.trips.list.invalidate() });
   const [editingAttendeeId, setEditingAttendeeId] = useState<string | null>(null);
+  const [showLaterTripFor, setShowLaterTripFor] = useState<string | null>(null);
   const [flightEditor, setFlightEditor] = useState<FlightEditor | null>(null);
   const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', skills: [] as string[], isTeen: false, speaksSpanish: false, status: 'possible' as AttendeeRosterStatus, knowsAtTHV: [] as string[], knowsOther: '', notes: '' });
 
@@ -181,6 +230,9 @@ function AttendeeSection({ trip, onSaveOperations }: { trip: Trip; onSaveOperati
       knowsAtTHV: attendee.knowsAtTHV,
       notes: attendee.notes || undefined,
     });
+  };
+  const reassignAttendee = async (attendee: TripAttendee, targetTripId: string) => {
+    if (targetTripId !== trip.id) await updateAttendeeMut.mutateAsync({ id: attendee.id, tripId: targetTripId });
   };
   const updateLeaderTicket = (name: string, purchasedTicket: boolean, flight?: TripFlightDetails) => {
     const previous = trip.operations?.leaderLogistics?.[name] ?? {};
@@ -346,7 +398,8 @@ function AttendeeSection({ trip, onSaveOperations }: { trip: Trip; onSaveOperati
                     {a.skills.length > 0 && <div className="flex flex-wrap gap-1 pt-0.5">{a.skills.map((s: string) => <span key={s} className="text-[10px] px-1.5 py-0.5 rounded-full bg-[oklch(0.88_0.022_72)] text-[oklch(0.28_0.018_55)]">{s}</span>)}</div>}
                     {a.knowsAtTHV && a.knowsAtTHV.length > 0 && <p className="text-xs" style={{ color: 'oklch(0.52 0.022 65)' }}>Knows: {a.knowsAtTHV.join(', ')}</p>}
                     {a.notes && <p className="text-xs italic" style={{ color: 'oklch(0.52 0.022 65)' }}>{a.notes}</p>}
-                    <button onClick={() => startEditAttendee(a)} className="text-xs mt-1" style={{ color: 'oklch(0.50 0.18 250)' }}>Edit</button>
+                    <div className="mt-2 flex flex-wrap items-center gap-3"><button onClick={() => startEditAttendee(a)} className="text-xs" style={{ color: 'oklch(0.50 0.18 250)' }}>Edit</button>{tripOptions.filter(option => option.id !== trip.id).length > 0 && <button onClick={() => setShowLaterTripFor(showLaterTripFor === a.id ? null : a.id)} className="text-xs text-[oklch(0.40_0.08_250)]">Go on a later trip</button>}</div>
+                    {showLaterTripFor === a.id && <div className="mt-2 rounded-md bg-[oklch(0.97_0.02_250)] p-2"><label className="block text-xs text-[oklch(0.42_0.018_55)]">Which trip?<select aria-label={`Choose a later trip for ${a.name}`} defaultValue="" onChange={event => { if (event.target.value) { void reassignAttendee(a, event.target.value); setShowLaterTripFor(null); } }} className="mt-1 h-8 w-full rounded border border-[oklch(0.75_0.12_250)] bg-white px-2 text-sm"><option value="" disabled>Select a future trip</option>{tripOptions.filter(option => option.id !== trip.id).map(option => <option key={option.id} value={option.id}>{formatDate(option.startDate)} · {option.name}</option>)}</select></label></div>}
                   </>
                 )}
               </div>
@@ -606,7 +659,7 @@ function TripCard({ trip, onEdit, onDelete, isEditing, workspaceOpen, onToggleWo
 
 function TripWorkspace({ trip, onSave }: { trip: Trip; onSave: (operations: TripOperations) => void }) {
   const { store } = useDashboard();
-  const [tab, setTab] = useState<'attendees' | 'expenses' | 'tasks' | 'itinerary' | 'flights'>('attendees');
+  const [tab, setTab] = useState<'attendees' | 'expenses' | 'tasks' | 'itinerary' | 'docs' | 'flights'>('attendees');
   const [expense, setExpense] = useState<Partial<TripExpense>>({});
   const [task, setTask] = useState<Partial<TripPlanningTask>>({});
   const utils = trpc.useUtils();
@@ -642,13 +695,14 @@ function TripWorkspace({ trip, onSave }: { trip: Trip; onSave: (operations: Trip
   };
   const patchTask = (id: string, patch: Partial<TripPlanningTask>) => saveOps({ planningTasks: tasks.map(t => t.id === id ? { ...t, ...patch } : t) });
   const deleteTask = (id: string) => saveOps({ planningTasks: tasks.filter(taskItem => taskItem.id !== id) });
-  const tabs = [['attendees', 'Attendees'], ['expenses', 'Trip expenses'], ['tasks', 'Trip to-do list'], ['itinerary', 'Trip itinerary'], ['flights', 'Flight compilation']] as const;
+  const tabs = [['attendees', 'Attendees'], ['expenses', 'Trip expenses'], ['tasks', 'Trip to-do list'], ['itinerary', 'Trip itinerary'], ['docs', 'Docs from Guate Team'], ['flights', 'Flight compilation']] as const;
   return <div className="mt-5 border-t border-[oklch(0.84_0.018_75)] pt-4">
     <div className="flex gap-1 overflow-x-auto pb-2">{tabs.map(([key, label]) => <button key={key} onClick={() => setTab(key)} className={`whitespace-nowrap rounded-full px-3 py-1 text-xs ${tab === key ? 'bg-[oklch(0.22_0.018_55)] text-white' : 'bg-[oklch(0.93_0.015_78)] text-[oklch(0.42_0.018_55)]'}`}>{label}</button>)}</div>
     {tab === 'attendees' && <AttendeeSection trip={trip} onSaveOperations={saveOps} />}
     {tab === 'expenses' && <ExpenseWorkspace expenses={expenses} ops={ops} expense={expense} setExpense={setExpense} onAdd={addExpense} onSave={saveOps}/>} 
     {tab === 'tasks' && <TripTodoListWithEntry tasks={tasks} draft={task} onDraftChange={setTask} onAdd={addTask} onPatch={patchTask} onDelete={deleteTask} />}
     {tab === 'itinerary' && <TripItinerary trip={trip} operations={ops} templateTrips={store.trips} onSave={saveOps} />}
+    {tab === 'docs' && <GuateTeamDocuments trip={trip} operations={ops} onSave={saveOps} />}
     {tab === 'flights' && <div className="space-y-3 pt-3"><p className="text-xs text-[oklch(0.52_0.022_65)]">Flight compilation for all leaders and volunteers who are going. Changes save when you leave a field. Include two checked bags for THV supplies where needed.</p>{leaders.map(leader => <div key={`leader-flight-${leader.name}`} className="rounded-lg border border-[oklch(0.87_0.018_75)] bg-white p-3"><p className="mb-2 text-sm font-medium">{leader.name} <span className="ml-1 text-xs font-normal text-[oklch(0.48_0.04_315)]">Leader</span></p><div className="grid grid-cols-2 gap-2">{[['airline','Airline'],['flightNumber','Flight number'],['departureAirport','Departure airport'],['arrivalAirport','Arrival airport'],['departureDateTime','Departure date/time'],['returnDateTime','Return date/time'],['bookingReference','Booking reference'],['seatNotes','Seat notes'],['baggageNotes','Baggage / 2-bag notes']].map(([field, label]) => <Input key={`${leader.name}-${field}-${(ops.leaderLogistics?.[leader.name]?.flight as any)?.[field] ?? ''}`} placeholder={label} defaultValue={(ops.leaderLogistics?.[leader.name]?.flight as any)?.[field] ?? ''} onBlur={e => saveOps({ leaderLogistics: { ...ops.leaderLogistics, [leader.name]: { ...ops.leaderLogistics?.[leader.name], flight: { ...ops.leaderLogistics?.[leader.name]?.flight, [field]: e.target.value } } } })}/>)}</div></div>)}{going.map(a => <div key={a.id} className="rounded-lg border border-[oklch(0.87_0.018_75)] bg-white p-3"><p className="mb-2 text-sm font-medium">{a.name}</p><div className="grid grid-cols-2 gap-2">{[['airline','Airline'],['flightNumber','Flight number'],['departureAirport','Departure airport'],['arrivalAirport','Arrival airport'],['departureDateTime','Departure date/time'],['returnDateTime','Return date/time'],['bookingReference','Booking reference'],['seatNotes','Seat notes'],['baggageNotes','Baggage / 2-bag notes']].map(([field, label]) => <Input key={`${a.id}-${field}-${(a.tripLogistics?.flight as any)?.[field] ?? ''}`} placeholder={label} defaultValue={(a.tripLogistics?.flight as any)?.[field] ?? ''} onBlur={e => void updateFlight(a, field, e.target.value)}/>)}</div></div>)}<div className="flex justify-end border-t border-[oklch(0.90_0.012_76)] pt-4"><Button size="sm" onClick={() => downloadFlightCompilationPdf(trip, flightTravelers)}>Download PDF</Button></div></div>}
   </div>;
 }

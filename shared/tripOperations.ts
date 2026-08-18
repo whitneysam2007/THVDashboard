@@ -42,6 +42,15 @@ export type TripItineraryDay = {
   activities: TripItineraryActivity[];
 };
 
+export type TripGuateTeamDocument = {
+  id: string;
+  name: string;
+  category: 'Garden Tower' | 'Family market list' | 'Home visits' | 'Other';
+  key: string;
+  mimeType?: string;
+  uploadedAt: string;
+};
+
 export type TripOperations = {
   expenses?: TripExpense[];
   quetzalesPerUsd?: number;
@@ -49,6 +58,7 @@ export type TripOperations = {
   leaderLogistics?: Record<string, { purchasedTicket?: boolean; flight?: TripFlightDetails }>;
   planningTasks?: TripPlanningTask[];
   itineraryDays?: TripItineraryDay[];
+  guateTeamDocuments?: TripGuateTeamDocument[];
   gardenTowers?: number;
   gardenTowerFundsUsd?: number;
   gardenTowerFundsReceived?: boolean;
