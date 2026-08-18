@@ -2,11 +2,12 @@
 // Sorted: biggest donors first (total donations descending)
 // Filters: status + Narú Circle, Donor Trip, Tax Receipt (2026)
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useLocation } from 'wouter';
 import { useDashboard } from '@/contexts/DashboardContext';
 import {
   computeDonorStatus, donorCardPriorityDate, formatDate, nextContactDate, daysUntilNextContact, sortDonorsByCardPriority,
-  formatCurrency, totalDonated, currentYearContributionTotal, expectedRecurringAnnualAmount, tierLabel, cn
+  formatCurrency, totalDonated, expectedRecurringAnnualAmount, portfolioHeaderMetrics, tierLabel, cn
 } from '@/lib/utils';
 import { donorTypeLabel } from '@/lib/utils';
 import { donationsLastYears } from '@/lib/utils';
@@ -32,6 +33,7 @@ const STATUS_FILTERS: { value: DonorStatus | 'all' | 'potential'; label: string 
 
 export default function Donors() {
   const { store } = useDashboard();
+  const [location, setLocation] = useLocation();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<DonorStatus | 'all' | 'potential'>('all');
   const [filterNaru, setFilterNaru] = useState(false);
@@ -40,6 +42,7 @@ export default function Donors() {
   const [filterRecurring, setFilterRecurring] = useState(false);
   const [filterUpcoming, setFilterUpcoming] = useState(false);
   const [selectedDonorId, setSelectedDonorId] = useState<string | null>(null);
+  const [donorModalFocus, setDonorModalFocus] = useState<'log-interaction' | undefined>();
   const [showAddDonor, setShowAddDonor] = useState(false);
 
   // Compute live status + total donated for each donor
@@ -71,9 +74,17 @@ export default function Donors() {
     : [...filtered].sort((a, b) => b._total - a._total);
 
   const currentYear = new Date().getFullYear();
-  const currentYearTotal = currentYearContributionTotal(donors);
-  const recurringAnnualBase = expectedRecurringAnnualAmount(allDonors);
+  const { currentYearTotal, expectedRecurringAnnualAmount: recurringAnnualBase } = portfolioHeaderMetrics(allDonors, 'major');
   const selectedDonor = donors.find(d => d.id === selectedDonorId) || null;
+
+  useEffect(() => {
+    const search = new URLSearchParams(window.location.search);
+    const donorId = search.get('donor');
+    if (!donorId || !donors.some(donor => donor.id === donorId)) return;
+    setSelectedDonorId(donorId);
+    setDonorModalFocus(search.get('focus') === 'log-interaction' ? 'log-interaction' : undefined);
+    setLocation('/', { replace: true });
+  }, [location, donors, setLocation]);
 
   return (
     <div className="p-6 lg:p-8 max-w-[1300px]">
@@ -81,10 +92,10 @@ export default function Donors() {
       <div className="flex items-start justify-between mb-8">
         <div>
           <h1 className="font-display text-4xl mb-1" style={{ color: 'oklch(0.22 0.018 55)' }}>
-            Donor Relations
+            Major Donors
           </h1>
           <p className="text-sm" style={{ color: 'oklch(0.52 0.022 65)' }}>
-            Tracking {donors.length} major donor{donors.length !== 1 ? 's' : ''}
+            Tracking {donors.length} donor{donors.length !== 1 ? 's' : ''}
             {' · '}{formatCurrency(currentYearTotal)} total contributed in {currentYear}
           </p>
           <p className="text-sm mt-1" style={{ color: 'oklch(0.42 0.13 145)' }}>
@@ -222,7 +233,7 @@ export default function Donors() {
             return (
               <button
                 key={donor.id}
-                onClick={() => setSelectedDonorId(donor.id)}
+                onClick={() => { setSelectedDonorId(donor.id); setDonorModalFocus(undefined); }}
                 className="text-left p-5 rounded-lg border bg-[oklch(0.985_0.008_80)] border-[oklch(0.84_0.018_75)] hover:border-[oklch(0.60_0.018_65)] hover:shadow-md transition-all duration-200"
               >
                 {/* Card header */}
@@ -349,7 +360,7 @@ export default function Donors() {
       </div>
 
       {selectedDonor && (
-        <DonorModal donor={selectedDonor} onClose={() => setSelectedDonorId(null)} />
+        <DonorModal donor={selectedDonor} initialFocus={donorModalFocus} onClose={() => { setSelectedDonorId(null); setDonorModalFocus(undefined); }} />
       )}
       {showAddDonor && (
         <AddDonorModal onClose={() => setShowAddDonor(false)} />

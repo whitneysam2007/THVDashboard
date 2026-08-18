@@ -158,8 +158,11 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       purchasedTicket: Number(a.purchasedTicket) === 1,
       knowsAtTHV: a.knowsAtTHV ? JSON.parse(a.knowsAtTHV as string) : [],
       notes: a.notes as string | undefined,
+      medicalProfile: a.medicalProfile as any,
+      tripLogistics: a.tripLogistics as any,
     })),
     notes: t.notes ?? undefined,
+    operations: t.operations as Trip['operations'],
   }));
 
   const initiatives: Initiative[] = (initiativesQuery.data ?? []).map((i: any) => ({
@@ -271,6 +274,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       endDate: updates.endDate,
       teamMembers: updates.teamMembers,
       notes: updates.notes,
+      operations: updates.operations,
     });
   }, [updateTripMut]);
 

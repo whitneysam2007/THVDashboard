@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeDonorStatus, currentYearContributionTotal, donationsInCalendarYear, donorCardPriorityDate, expectedRecurringAnnualAmount, generateAutoTasks, JOURNEY_FIG_BRIGHT, JOURNEY_FIG_MUTED, recurringJourneyColor, sortDonorsByCardPriority } from './utils';
+import { computeDonorStatus, currentYearContributionTotal, donationsInCalendarYear, donorCardPriorityDate, expectedRecurringAnnualAmount, generateAutoTasks, JOURNEY_FIG_BRIGHT, JOURNEY_FIG_MUTED, portfolioHeaderMetrics, recurringJourneyColor, sortDonorsByCardPriority } from './utils';
 import type { Donor } from './types';
 
 function donorStartingOn(startDate: string): Donor {
@@ -120,6 +120,26 @@ describe('expectedRecurringAnnualAmount', () => {
     incomplete.type = 'recurring';
 
     expect(expectedRecurringAnnualAmount([potential, incomplete])).toBe(0);
+  });
+});
+
+describe('portfolioHeaderMetrics', () => {
+  it('keeps donor counts, 2026 gifts, and recurring commitments within the selected portfolio', () => {
+    const major = donorStartingOn('2025-01-01');
+    major.portfolio = 'major';
+    major.currentYearDonated = 10_000;
+    major.type = 'recurring';
+    major.recurringAmount = 2_000;
+    major.recurringFrequency = 'yearly';
+    const monthly = donorStartingOn('2025-01-01');
+    monthly.portfolio = 'monthly-giving';
+    monthly.currentYearDonated = 1_200;
+    monthly.type = 'recurring';
+    monthly.recurringAmount = 100;
+    monthly.recurringFrequency = 'monthly';
+
+    expect(portfolioHeaderMetrics([major, monthly], 'major')).toEqual({ donorCount: 1, currentYearTotal: 10_000, expectedRecurringAnnualAmount: 2_000 });
+    expect(portfolioHeaderMetrics([major, monthly], 'monthly-giving')).toEqual({ donorCount: 1, currentYearTotal: 1_200, expectedRecurringAnnualAmount: 1_200 });
   });
 });
 

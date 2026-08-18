@@ -198,7 +198,11 @@ export async function getTasksForDonor(donorId: string) {
 }
 
 export async function upsertTask(data: InsertRow) {
-  const row = { ...data, id: taskRowId(String(data.donorId), String(data.id)) };
+  const row: InsertRow = { ...data, id: taskRowId(String(data.donorId), String(data.id)) };
+  if (data.completedDate === undefined) {
+    row.completedDate = null;
+    row.completedBy = null;
+  }
   assertSuccess(await db().from('donor_tasks').upsert(clean(row), { onConflict: 'id' }));
 }
 

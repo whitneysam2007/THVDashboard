@@ -25,6 +25,7 @@ describe('medical volunteers', () => {
   it('uses full, unambiguous labels for every roster status', () => {
     expect(medicalVolunteerStatusLabel({ confirmed: false, purchasedTicket: false })).toBe('Possible attendee');
     expect(medicalVolunteerStatusLabel({ confirmed: true, purchasedTicket: false })).toBe('Confirmed attendee');
-    expect(medicalVolunteerStatusLabel({ confirmed: true, purchasedTicket: true })).toBe('Ticket purchased');
+    expect(medicalVolunteerStatusLabel({ confirmed: true, purchasedTicket: true })).toBe('Going attendee');
+    expect(medicalVolunteerStatusLabel({ confirmed: false, purchasedTicket: false, tripLogistics: { depositPaid: true } })).toBe('Going attendee');
   });
 });

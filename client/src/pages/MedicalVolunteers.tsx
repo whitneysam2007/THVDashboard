@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CheckCircle2, Edit2, Mail, Phone, Stethoscope, X } from 'lucide-react';
+import { CheckCircle2, Download, Edit2, Mail, Phone, Stethoscope, X } from 'lucide-react';
 import { useDashboard } from '@/contexts/DashboardContext';
 import { medicalVolunteersByTrip, MEDICAL_VOLUNTEER_SKILLS, medicalVolunteerStatusLabel } from '@/lib/medicalVolunteers';
 import type { MedicalVolunteerProfile, Trip, TripAttendee } from '@/lib/types';
@@ -7,12 +7,46 @@ import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { jsPDF } from 'jspdf';
 
 const STRENGTH_OPTIONS = ['Triage', 'Primary care', 'Pediatrics', 'Maternal / newborn care', 'Wound care', 'Chronic disease', 'Dentistry', 'Radiology', 'Medication support', 'Nursing education', 'Mental-health support', 'Public-health education'];
 const EMPTY_PROFILE: MedicalVolunteerProfile = { clinicalStrengths: [], assignmentStatus: 'To be planned' };
 
 function profileFor(attendee: TripAttendee): MedicalVolunteerProfile {
   return { ...EMPTY_PROFILE, ...(attendee.medicalProfile ?? {}), clinicalStrengths: attendee.medicalProfile?.clinicalStrengths ?? [] };
+}
+
+type MedicalExpedition = { trip: Trip; attendees: TripAttendee[] };
+
+function downloadMedicalBioPdf(expeditions: MedicalExpedition[]) {
+  const document = new jsPDF({ unit: 'pt', format: 'letter' });
+  const pageWidth = document.internal.pageSize.getWidth();
+  const pageHeight = document.internal.pageSize.getHeight();
+  const margin = 42;
+  const contentWidth = pageWidth - margin * 2;
+  let y = 52;
+  const ensureRoom = (height: number) => { if (y + height > pageHeight - 48) { document.addPage(); y = 52; } };
+  const write = (value: string, size = 9.5, bold = false) => { document.setFont('helvetica', bold ? 'bold' : 'normal'); document.setFontSize(size); document.setTextColor(73, 66, 57); const lines = document.splitTextToSize(value, contentWidth - 24) as string[]; ensureRoom(lines.length * (size + 2) + 6); document.text(lines, margin + 12, y); y += lines.length * (size + 2) + 6; };
+  document.setTextColor(46, 40, 35); document.setFont('times', 'bold'); document.setFontSize(22); document.text('THV Medical Volunteer Briefing', margin, y); y += 24;
+  document.setFont('helvetica', 'normal'); document.setFontSize(10); document.setTextColor(83, 75, 66); document.text('Prepared for the Guatemala team · recorded profile, readiness, and assignment planning information.', margin, y); y += 26;
+  expeditions.forEach((expedition, expeditionIndex) => {
+    ensureRoom(38); document.setFillColor(244, 239, 232); document.roundedRect(margin, y - 16, contentWidth, 28, 5, 5, 'F'); document.setTextColor(46, 40, 35); document.setFont('times', 'bold'); document.setFontSize(16); document.text(expedition.trip.name, margin + 10, y + 2); y += 32;
+    expedition.attendees.forEach((attendee, index) => {
+      const profile = profileFor(attendee); const skills = attendee.skills.filter(skill => MEDICAL_VOLUNTEER_SKILLS.includes(skill.trim().toLowerCase() as typeof MEDICAL_VOLUNTEER_SKILLS[number]));
+      ensureRoom(110); document.setFillColor(251, 249, 245); document.roundedRect(margin, y - 16, contentWidth, 102, 5, 5, 'F'); document.setTextColor(46, 40, 35); document.setFont('helvetica', 'bold'); document.setFontSize(12); document.text(`${index + 1}. ${attendee.name}`, margin + 12, y); y += 16;
+      const role = [profile.professionalRole || skills[0] || 'Medical volunteer', profile.specialty, profile.yearsExperience && `${profile.yearsExperience} years’ experience`].filter(Boolean).join(' · ');
+      write(`Role: ${role}`, 9.5, true); write(`Attendance: ${medicalVolunteerStatusLabel(attendee)} · Spanish: ${attendee.speaksSpanish ? 'Yes' : 'No'}`, 9);
+      if (profile.bio) write(`Professional bio: ${profile.bio}`);
+      if (profile.clinicalStrengths?.length) write(`Clinical strengths: ${profile.clinicalStrengths.join(', ')}`);
+      if (profile.fieldReadiness || profile.homeVisitComfort) write(`Field / home visits: ${[profile.fieldReadiness, profile.homeVisitComfort && `Home visits — ${profile.homeVisitComfort}`].filter(Boolean).join(' · ')}`);
+      const assignment = [profile.assignmentStatus && `Status — ${profile.assignmentStatus}`, profile.assignmentPriorities && `Priorities — ${profile.assignmentPriorities}`, profile.guatemalaRecommendations && `Guatemala team — ${profile.guatemalaRecommendations}`, profile.thvAssignment && `THV assignment — ${profile.thvAssignment}`, profile.planningNotes].filter(Boolean).join(' · ');
+      if (assignment) write(`Assignment plan: ${assignment}`);
+      if (attendee.email || attendee.phone) write(`Contact: ${[attendee.email, attendee.phone].filter(Boolean).join(' · ')}`, 8.5);
+      y += 10;
+    });
+    if (expeditionIndex < expeditions.length - 1) y += 6;
+  });
+  document.save(`thv-medical-volunteer-briefing-${new Date().toISOString().slice(0, 10)}.pdf`);
 }
 
 function ProfileDialog({ trip, attendee, onClose }: { trip: Trip; attendee: TripAttendee; onClose: () => void }) {
@@ -44,5 +78,5 @@ export default function MedicalVolunteers() {
   const { store } = useDashboard();
   const [selected, setSelected] = useState<{ trip: Trip; attendee: TripAttendee } | null>(null);
   const expeditions = medicalVolunteersByTrip(store.trips);
-  return <div className="p-6 lg:p-8"><div className="max-w-6xl"><p className="text-xs uppercase tracking-[0.2em] text-[oklch(0.52_0.022_65)]">Trip support</p><h1 className="mt-1 font-display text-4xl text-[oklch(0.22_0.018_55)]">Medical Volunteers</h1><p className="mt-2 max-w-2xl text-sm text-[oklch(0.48_0.022_65)]">Click a profile to prepare clinical strengths and Guatemala assignment planning for every qualifying trip attendee.</p>{expeditions.length === 0 ? <div className="mt-8 rounded-xl border border-[oklch(0.84_0.018_75)] bg-[oklch(0.99_0.006_80)] p-8 text-center"><Stethoscope className="mx-auto text-[oklch(0.52_0.12_250)]" size={28} /><p className="mt-3 font-display text-xl text-[oklch(0.28_0.018_55)]">No medical volunteer profiles yet</p><p className="mt-1 text-sm text-[oklch(0.52_0.022_65)]">Add Medical, Nurse, Doctor, OB, or Radiology to an attendee in Trips.</p></div> : <div className="mt-8 space-y-10">{expeditions.map(({ trip, attendees }) => <section key={trip.id}><div className="border-b border-[oklch(0.84_0.018_75)] pb-3"><h2 className="font-display text-2xl text-[oklch(0.22_0.018_55)]">{trip.name}</h2></div><div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{attendees.map(attendee => { const profile = profileFor(attendee); const medicalSkills = attendee.skills.filter(skill => MEDICAL_VOLUNTEER_SKILLS.includes(skill.trim().toLowerCase() as typeof MEDICAL_VOLUNTEER_SKILLS[number])); return <button type="button" key={attendee.id} onClick={() => setSelected({ trip, attendee })} className="rounded-xl border border-[oklch(0.84_0.018_75)] bg-[oklch(0.99_0.006_80)] p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[oklch(0.60_0.10_250)] hover:shadow-md"><div className="flex items-start justify-between gap-3"><div><h3 className="font-display text-xl text-[oklch(0.25_0.018_55)]">{attendee.name}</h3><p className="mt-1 text-sm text-[oklch(0.48_0.022_65)]">{profile.professionalRole || medicalSkills[0] || 'Medical volunteer'}</p></div><Stethoscope size={18} className="shrink-0 text-[oklch(0.50_0.12_250)]" /></div><div className="mt-3 flex flex-wrap gap-1.5"><span className="rounded-full bg-[oklch(0.94_0.04_250)] px-2 py-1 text-xs font-semibold text-[oklch(0.34_0.10_250)]">{medicalVolunteerStatusLabel(attendee)}</span><span className="rounded-full bg-[oklch(0.95_0.025_155)] px-2 py-1 text-xs font-semibold text-[oklch(0.32_0.09_155)]">Spanish: {attendee.speaksSpanish ? 'Yes' : 'No'}</span></div><div className="mt-4 flex flex-wrap gap-1.5">{medicalSkills.map(skill => <span key={skill} className="rounded-full border border-[oklch(0.78_0.035_250)] px-2 py-1 text-xs text-[oklch(0.34_0.10_250)]">{skill}</span>)}</div><p className="mt-4 border-t border-[oklch(0.90_0.012_78)] pt-3 text-xs leading-relaxed text-[oklch(0.48_0.022_65)]">{profile.assignmentPriorities || 'Open profile to add Guatemala assignment priorities.'}</p></button>; })}</div></section>)}</div>}</div>{selected && <ProfileDialog {...selected} onClose={() => setSelected(null)} />}</div>;
+  return <div className="p-6 lg:p-8"><div className="max-w-6xl"><p className="text-xs uppercase tracking-[0.2em] text-[oklch(0.52_0.022_65)]">Trip support</p><h1 className="mt-1 font-display text-4xl text-[oklch(0.22_0.018_55)]">Medical Volunteers</h1><p className="mt-2 max-w-2xl text-sm text-[oklch(0.48_0.022_65)]">Click a profile to prepare clinical strengths and Guatemala assignment planning for every qualifying trip attendee.</p>{expeditions.length === 0 ? <div className="mt-8 rounded-xl border border-[oklch(0.84_0.018_75)] bg-[oklch(0.99_0.006_80)] p-8 text-center"><Stethoscope className="mx-auto text-[oklch(0.52_0.12_250)]" size={28} /><p className="mt-3 font-display text-xl text-[oklch(0.28_0.018_55)]">No medical volunteer profiles yet</p><p className="mt-1 text-sm text-[oklch(0.52_0.022_65)]">Add Medical, Nurse, Doctor, OB, or Radiology to an attendee in Trips.</p></div> : <div className="mt-8 space-y-10">{expeditions.map(({ trip, attendees }) => <section key={trip.id}><div className="border-b border-[oklch(0.84_0.018_75)] pb-3"><h2 className="font-display text-2xl text-[oklch(0.22_0.018_55)]">{trip.name}</h2></div><div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{attendees.map(attendee => { const profile = profileFor(attendee); const medicalSkills = attendee.skills.filter(skill => MEDICAL_VOLUNTEER_SKILLS.includes(skill.trim().toLowerCase() as typeof MEDICAL_VOLUNTEER_SKILLS[number])); return <button type="button" key={attendee.id} onClick={() => setSelected({ trip, attendee })} className="rounded-xl border border-[oklch(0.84_0.018_75)] bg-[oklch(0.99_0.006_80)] p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[oklch(0.60_0.10_250)] hover:shadow-md"><div className="flex items-start justify-between gap-3"><div><h3 className="font-display text-xl text-[oklch(0.25_0.018_55)]">{attendee.name}</h3><p className="mt-1 text-sm text-[oklch(0.48_0.022_65)]">{profile.professionalRole || medicalSkills[0] || 'Medical volunteer'}</p></div><Stethoscope size={18} className="shrink-0 text-[oklch(0.50_0.12_250)]" /></div><div className="mt-3 flex flex-wrap gap-1.5"><span className="rounded-full bg-[oklch(0.94_0.04_250)] px-2 py-1 text-xs font-semibold text-[oklch(0.34_0.10_250)]">{medicalVolunteerStatusLabel(attendee)}</span><span className="rounded-full bg-[oklch(0.95_0.025_155)] px-2 py-1 text-xs font-semibold text-[oklch(0.32_0.09_155)]">Spanish: {attendee.speaksSpanish ? 'Yes' : 'No'}</span></div><div className="mt-4 flex flex-wrap gap-1.5">{medicalSkills.map(skill => <span key={skill} className="rounded-full border border-[oklch(0.78_0.035_250)] px-2 py-1 text-xs text-[oklch(0.34_0.10_250)]">{skill}</span>)}</div><p className="mt-4 border-t border-[oklch(0.90_0.012_78)] pt-3 text-xs leading-relaxed text-[oklch(0.48_0.022_65)]">{profile.assignmentPriorities || 'Open profile to add Guatemala assignment priorities.'}</p></button>; })}</div></section>)}<div className="flex justify-end border-t border-[oklch(0.87_0.018_75)] pt-6"><Button onClick={() => downloadMedicalBioPdf(expeditions)}><Download size={16} className="mr-2" />Download Bio PDF</Button></div></div>}</div>{selected && <ProfileDialog {...selected} onClose={() => setSelected(null)} />}</div>;
 }

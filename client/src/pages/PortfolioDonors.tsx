@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useDashboard } from '@/contexts/DashboardContext';
 import { Donor, DonorPortfolio } from '@/lib/types';
 import { donorPortfolioLabel } from '@shared/donorPortfolios';
-import { formatCurrency, formatDate, totalDonated } from '@/lib/utils';
+import { formatCurrency, formatDate, portfolioHeaderMetrics, totalDonated } from '@/lib/utils';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -208,15 +208,11 @@ export default function PortfolioDonors({ portfolio }: PortfolioDonorsProps) {
   const [adding, setAdding] = useState(false);
   const donors = useMemo(() => store.donors.filter(donor => donor.portfolio === portfolio), [store.donors, portfolio]);
   const selected = donors.find(donor => donor.id === selectedId) ?? null;
-  const annualExpected = donors.reduce((sum, donor) => sum + (donor.type === 'recurring' && donor.recurringFrequency === 'monthly' ? (donor.recurringAmount ?? 0) * 12 : 0), 0);
+  const { currentYearTotal, expectedRecurringAnnualAmount: annualExpected } = portfolioHeaderMetrics(store.donors, portfolio);
   const title = donorPortfolioLabel(portfolio);
-  const description = portfolio === 'monthly-giving'
-    ? 'All monthly donors, regardless of dollar amount. Monthly commitments support the expected recurring total on the primary dashboard.'
-    : 'Annual non-monthly donors whose calendar-year gifts are between $500 and $5,000. Track transactions and handwritten thank-you cards.';
 
   return <div className="p-6 lg:p-8 max-w-[1300px]">
-    <header className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-8"><div><p className="text-xs uppercase tracking-[0.16em]" style={{ color: 'oklch(0.50 0.16 350)' }}>Donor portfolio</p><h1 className="font-display text-4xl mt-1" style={{ color: 'oklch(0.22 0.018 55)' }}>{title}</h1><p className="max-w-2xl text-sm mt-2" style={{ color: 'oklch(0.52 0.022 65)' }}>{description}</p></div><Button onClick={() => setAdding(true)}><Plus size={15} /> Add donor</Button></header>
-    <div className="grid sm:grid-cols-2 gap-4 mb-7"><div className="rounded-lg p-4 border bg-[oklch(0.985_0.008_80)] border-[oklch(0.84_0.018_75)]"><p className="text-xs uppercase tracking-[0.14em]" style={{ color: 'oklch(0.60 0.018 65)' }}>Donors tracked</p><p className="font-display text-3xl mt-1">{donors.length}</p></div><div className="rounded-lg p-4 border bg-[oklch(0.985_0.008_80)] border-[oklch(0.84_0.018_75)]"><p className="text-xs uppercase tracking-[0.14em]" style={{ color: 'oklch(0.60 0.018_65)' }}>{portfolio === 'monthly-giving' ? 'Expected annual giving' : `Thank-you letters sent in ${new Date().getFullYear()}`}</p><p className="font-display text-3xl mt-1">{portfolio === 'monthly-giving' ? formatCurrency(annualExpected) : `${donors.filter(donor => donor.thankYouLetterForCurrentYear).length}/${donors.filter(donor => (donor.currentYearDonated ?? 0) > 0).length}`}</p>{portfolio === 'monthly-giving' && <p className="text-xs mt-1.5" style={{ color: 'oklch(0.52 0.022 65)' }}>Included in the Donor Relations expected annual recurring amount.</p>}</div></div>
+    <header className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-8"><div><h1 className="font-display text-4xl mb-1" style={{ color: 'oklch(0.22 0.018 55)' }}>{title}</h1><p className="text-sm" style={{ color: 'oklch(0.52 0.022 65)' }}>Tracking {donors.length} donor{donors.length !== 1 ? 's' : ''} · {formatCurrency(currentYearTotal)} total contributed in {new Date().getFullYear()}</p><p className="text-sm mt-1" style={{ color: 'oklch(0.42 0.13 145)' }}><span className="font-medium">{formatCurrency(annualExpected)}</span> expected recurring annual amount</p></div><Button onClick={() => setAdding(true)}><Plus size={15} /> Add donor</Button></header>
     {isLoading ? <p className="text-sm" style={{ color: 'oklch(0.52 0.022 65)' }}>Loading donors…</p> : donors.length === 0 ? <div className="rounded-lg border border-dashed p-12 text-center" style={{ borderColor: 'oklch(0.78 0.018 75)', color: 'oklch(0.52 0.022 65)' }}><RefreshCw size={24} className="mx-auto mb-3 opacity-60" /><p className="font-display text-xl">No donors in {title} yet</p><p className="text-sm mt-1">Add a donor or move an existing donor into this portfolio.</p></div> : <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">{donors.map(donor => <Card key={donor.id} donor={donor} portfolio={portfolio} onOpen={() => setSelectedId(donor.id)} />)}</div>}
     {selected && <DonorDetail donor={selected} portfolio={portfolio} onClose={() => setSelectedId(null)} />}
     {adding && <AddPortfolioDonor portfolio={portfolio} onClose={() => setAdding(false)} />}

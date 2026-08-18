@@ -74,10 +74,10 @@ function TripToggle({ donor, trips, onUpdate }: {
 }) {
   const [open, setOpen] = useState(false);
   const isOn = donor.donorTrip;
-  const selectedTrip = trips.find(t => (t.donorAttendees ?? []).includes(donor.id));
+  const selectedTrip = trips.find(t => t.id === donor.tripId);
 
   const handleDeselect = () => {
-    onUpdate(donor.id, { donorTrip: false });
+    onUpdate(donor.id, { donorTrip: false, tripId: undefined });
     setOpen(false);
   };
 
@@ -98,7 +98,7 @@ function TripToggle({ donor, trips, onUpdate }: {
           <p className="text-xs uppercase tracking-widest px-1 pb-1" style={{ color: 'oklch(0.62 0.012 65)' }}>Select a trip</p>
           {trips.length === 0 && <p className="text-xs px-1 italic" style={{ color: 'oklch(0.62 0.012 65)' }}>No trips yet — add one in the Trips tab.</p>}
           {trips.map(t => (
-            <button key={t.id} onClick={() => { onUpdate(donor.id, { donorTrip: true }); setOpen(false); }} className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-[oklch(0.96_0.012_78)] transition-colors" style={{ color: 'oklch(0.22 0.018 55)' }}>
+            <button key={t.id} onClick={() => { onUpdate(donor.id, { donorTrip: true, tripId: t.id }); setOpen(false); }} className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-[oklch(0.96_0.012_78)] transition-colors" style={{ color: 'oklch(0.22 0.018 55)' }}>
               {t.name} · {t.startDate}
             </button>
           ))}
@@ -120,9 +120,10 @@ const TIER_OPTIONS = [
 interface DonorModalProps {
   donor: Donor;
   onClose: () => void;
+  initialFocus?: 'log-interaction';
 }
 
-export default function DonorModal({ donor: donorProp, onClose }: DonorModalProps) {
+export default function DonorModal({ donor: donorProp, onClose, initialFocus }: DonorModalProps) {
   const { addActivity, updateDonor, deleteDonor, addDonation, deleteDonation, currentUser, store: dashStore } = useDashboard();
 
   // Load live donations from DB for this donor
@@ -685,7 +686,7 @@ export default function DonorModal({ donor: donorProp, onClose }: DonorModalProp
           )}
 
           {/* ── Donor Journey / Activity Log ── */}
-          <DonorJourney donor={donor} currentUser={currentUser ?? undefined} liveActivities={liveActivities} liveTasks={liveTasks} onActivityAdded={() => detailsQuery.refetch()} onTaskCompleted={() => detailsQuery.refetch()} />
+          <DonorJourney donor={donor} currentUser={currentUser ?? undefined} liveActivities={liveActivities} liveTasks={liveTasks} onActivityAdded={() => detailsQuery.refetch()} onTaskCompleted={() => detailsQuery.refetch()} openLogInteraction={initialFocus === 'log-interaction'} />
 
         </div>
       </div>

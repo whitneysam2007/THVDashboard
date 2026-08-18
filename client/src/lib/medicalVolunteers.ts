@@ -1,5 +1,5 @@
 import type { Trip, TripAttendee } from './types';
-import { attendeeRosterStatus } from './tripRoster';
+import { attendeeRosterStatus, isGoingAttendee } from './tripRoster';
 
 export const MEDICAL_VOLUNTEER_SKILLS = ['medical', 'nurse', 'doctor', 'ob', 'radiology'] as const;
 
@@ -16,9 +16,9 @@ export function medicalVolunteersByTrip(trips: Trip[]) {
     .filter(group => group.attendees.length > 0);
 }
 
-export function medicalVolunteerStatusLabel(attendee: Pick<TripAttendee, 'confirmed' | 'purchasedTicket'>) {
+export function medicalVolunteerStatusLabel(attendee: Pick<TripAttendee, 'confirmed' | 'purchasedTicket' | 'tripLogistics'>) {
+  if (isGoingAttendee(attendee)) return 'Going attendee';
   const status = attendeeRosterStatus(attendee);
-  if (status === 'purchased-ticket') return 'Ticket purchased';
   if (status === 'confirmed') return 'Confirmed attendee';
   return 'Possible attendee';
 }

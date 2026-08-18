@@ -2,38 +2,40 @@ import type { Trip, TripAttendee } from './types';
 
 export type TripRosterSummary = {
   teamCount: number;
-  ticketedGuests: TripAttendee[];
+  goingGuests: TripAttendee[];
   confirmedGuests: TripAttendee[];
   possibleGuests: TripAttendee[];
   travelingGuestCount: number;
   totalTravelers: number;
 };
 
-export type AttendeeRosterStatus = 'purchased-ticket' | 'confirmed' | 'possible';
+export type AttendeeRosterStatus = 'confirmed' | 'possible';
 
-export function attendeeRosterStatus(attendee: Pick<TripAttendee, 'confirmed' | 'purchasedTicket'>): AttendeeRosterStatus {
-  if (attendee.purchasedTicket) return 'purchased-ticket';
+export function attendeeRosterStatus(attendee: Pick<TripAttendee, 'confirmed'>): AttendeeRosterStatus {
   return attendee.confirmed ? 'confirmed' : 'possible';
 }
 
 export function attendeeFieldsForStatus(status: AttendeeRosterStatus) {
   return {
-    confirmed: status !== 'possible',
-    purchasedTicket: status === 'purchased-ticket',
+    confirmed: status === 'confirmed',
   };
+}
+
+export function isGoingAttendee(attendee: Pick<TripAttendee, 'purchasedTicket' | 'tripLogistics'>) {
+  return Boolean(attendee.purchasedTicket || attendee.tripLogistics?.depositPaid);
 }
 
 export function summarizeTripRoster(trip: Pick<Trip, 'teamMembers' | 'attendees'>): TripRosterSummary {
   const attendees = trip.attendees ?? [];
-  const ticketedGuests = attendees.filter(attendee => attendeeRosterStatus(attendee) === 'purchased-ticket');
-  const confirmedGuests = attendees.filter(attendee => attendeeRosterStatus(attendee) === 'confirmed');
-  const possibleGuests = attendees.filter(attendee => attendeeRosterStatus(attendee) === 'possible');
+  const goingGuests = attendees.filter(isGoingAttendee);
+  const confirmedGuests = attendees.filter(attendee => !isGoingAttendee(attendee) && attendeeRosterStatus(attendee) === 'confirmed');
+  const possibleGuests = attendees.filter(attendee => !isGoingAttendee(attendee) && attendeeRosterStatus(attendee) === 'possible');
   const teamCount = trip.teamMembers?.length ?? 0;
-  const travelingGuestCount = ticketedGuests.length + confirmedGuests.length;
+  const travelingGuestCount = goingGuests.length;
 
   return {
     teamCount,
-    ticketedGuests,
+    goingGuests,
     confirmedGuests,
     possibleGuests,
     travelingGuestCount,

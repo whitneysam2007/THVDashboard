@@ -1,482 +1,80 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { CheckCircle2, Pencil, Plus, Trash2 } from 'lucide-react';
+import { nanoid } from 'nanoid';
+import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import { useDashboard } from '@/contexts/DashboardContext';
-import { generateAutoTasks } from '@/lib/utils';
-import { nanoid } from 'nanoid';
-import { Plus, CheckCircle2, Circle, Trash2, Pencil, ChevronDown, ChevronRight } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import type { Donor } from '@/lib/types';
+import { nextContactDate } from '@/lib/utils';
+import { REPORTS, reportYearGiving, type ReportKey } from '@/lib/reportRecipients';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 const TEAM_MEMBERS = ['Liz', 'Lauren', 'Anna', 'Brenley', 'Emily', 'Amy', 'Kirsten'];
-const TODAY = new Date().toISOString().split('T')[0];
+const TODAY = new Date().toISOString().slice(0, 10);
 
-type TaskRow = {
-  id: string;
-  donorId: string;
-  donorName: string;
-  kind: string;
-  label: string;
-  dueDate: string;
-  completedDate?: string | null;
-  completedBy?: string | null;
-  isAuto: boolean; // generated from utils, not yet in DB
-};
+type TaskRow = { id: string; donorId: string; donorName: string; label: string; dueDate: string; kind: string; completedDate?: string | null; completedBy?: string | null };
+const formatDate = (date?: string | null) => date ? new Date(`${date}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No next connection date';
+const currency = (value: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value);
 
-function formatDate(d: string) {
-  if (!d) return '—';
-  const dt = new Date(d + 'T00:00:00');
-  return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
+function ReportGrid({ report, donors, tasks, onSetCompletion }: { report: (typeof REPORTS)[ReportKey]; donors: Donor[]; tasks: any[]; onSetCompletion: (donor: Donor, completed: boolean, date: string, by: string) => Promise<void> }) {
+  const [selected, setSelected] = useState<string[]>([]);
+  const [sentDate, setSentDate] = useState(TODAY);
+  const [sentBy, setSentBy] = useState('Liz');
+  const [busy, setBusy] = useState(false);
+  const allSelected = donors.length > 0 && donors.every(donor => selected.includes(donor.id));
+  const setAllSelected = (checked: boolean) => setSelected(checked ? donors.map(donor => donor.id) : []);
+  const toggleSelected = (id: string, checked: boolean) => setSelected(current => checked ? Array.from(new Set([...current, id])) : current.filter(currentId => currentId !== id));
+  const markSelected = async () => {
+    const selectedDonors = donors.filter(donor => selected.includes(donor.id));
+    if (!selectedDonors.length) return;
+    setBusy(true);
+    try {
+      await Promise.all(selectedDonors.map(donor => onSetCompletion(donor, true, sentDate, sentBy)));
+      setSelected([]);
+    } finally {
+      setBusy(false);
+    }
+  };
 
-function isOverdue(dueDate: string, completedDate?: string | null) {
-  if (completedDate) return false;
-  return dueDate < TODAY;
+  return <div className="mt-4 overflow-hidden rounded-xl border border-[oklch(0.87_0.018_75)] bg-white"><div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-[oklch(0.89_0.012_78)] bg-[oklch(0.975_0.012_80)] px-4 py-3"><div><h2 className="font-display text-xl text-[oklch(0.22_0.018_55)]">{report.title}</h2><p className="mt-0.5 text-xs text-[oklch(0.52_0.022_65)]">All donor portfolios · sending this report logs a dated interaction on the donor card and advances Next Contact.</p></div><span className="text-xs text-[oklch(0.52_0.022_65)]">{donors.length} recipients</span></div><div className="flex flex-wrap items-end gap-2 border-b border-[oklch(0.89_0.012_78)] bg-[oklch(0.99_0.004_80)] px-4 py-3"><label className="text-xs text-[oklch(0.48_0.022_65)]">Sent date<Input className="mt-1 h-8 w-40" type="date" value={sentDate} onChange={event => setSentDate(event.target.value)} /></label><label className="text-xs text-[oklch(0.48_0.022_65)]">Sent by<select value={sentBy} onChange={event => setSentBy(event.target.value)} className="mt-1 block h-8 rounded border border-[oklch(0.84_0.018_75)] bg-white px-2 text-sm text-[oklch(0.22_0.018_55)]">{TEAM_MEMBERS.map(member => <option key={member}>{member}</option>)}</select></label><Button size="sm" disabled={!selected.length || busy} onClick={() => void markSelected()}>{busy ? 'Saving…' : `Mark selected sent${selected.length ? ` (${selected.length})` : ''}`}</Button></div><div className="overflow-x-auto"><table className="w-full min-w-[790px] text-sm"><thead className="border-b border-[oklch(0.89_0.012_78)] text-left text-[10px] uppercase tracking-[0.12em] text-[oklch(0.52_0.022_65)]"><tr><th className="w-12 px-4 py-2 text-center"><input aria-label={`Select all recipients for ${report.title}`} type="checkbox" checked={allSelected} onChange={event => setAllSelected(event.target.checked)} /></th><th className="px-4 py-2">Name</th><th className="px-4 py-2">Email</th><th className="px-4 py-2">Mailing address</th><th className="px-4 py-2 text-right">{report.amountLabel}</th><th className="px-4 py-2 text-center">Sent</th></tr></thead><tbody>{donors.map(donor => { const record = tasks.find(task => task.donorId === donor.id && task.id === report.taskId); const sent = Boolean(record?.completedDate); return <tr key={donor.id} className="border-b border-[oklch(0.94_0.008_75)] last:border-0"><td className="px-4 py-2.5 text-center"><input aria-label={`Select ${donor.name} for ${report.title}`} type="checkbox" checked={selected.includes(donor.id)} onChange={event => toggleSelected(donor.id, event.target.checked)} /></td><td className="px-4 py-2.5 font-medium text-[oklch(0.22_0.018_55)]">{donor.name}</td><td className="px-4 py-2.5 text-xs text-[oklch(0.42_0.018_55)]">{donor.email || '—'}</td><td className="max-w-[260px] px-4 py-2.5 text-xs text-[oklch(0.42_0.018_55)]">{donor.address || '—'}</td><td className="px-4 py-2.5 text-right font-medium text-[oklch(0.22_0.018_55)]">{currency(reportYearGiving(donor, report.amountYear))}</td><td className="px-4 py-2.5 text-center"><input aria-label={`${sent ? 'Unmark' : 'Mark'} ${donor.name} for ${report.title}`} type="checkbox" checked={sent} disabled={busy} onChange={event => void onSetCompletion(donor, event.target.checked, sentDate, sentBy)} /><span className="ml-2 text-xs text-[oklch(0.52_0.022_65)]">{sent ? formatDate(record.completedDate) : ''}</span></td></tr>; })}</tbody></table></div></div>;
 }
 
 export default function Tasks() {
-  const { store, updateDonor } = useDashboard();
+  const { store } = useDashboard();
+  const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
-
-  // Fetch all DB tasks
   const { data: dbTasks = [], refetch } = trpc.donors.allTasks.useQuery(undefined, { refetchOnWindowFocus: false });
-  const upsertTaskMut = trpc.donors.upsertTask.useMutation({ onSuccess: () => { refetch(); utils.donors.list.invalidate(); } });
-  const deleteTaskMut = trpc.donors.deleteTask.useMutation({ onSuccess: () => { refetch(); utils.donors.list.invalidate(); } });
-
-  const [completingId, setCompletingId] = useState<string | null>(null);
-  const [completeBy, setCompleteBy] = useState(TEAM_MEMBERS[0]);
-  const [completeDate, setCompleteDate] = useState(TODAY);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editLabel, setEditLabel] = useState('');
-  const [editDate, setEditDate] = useState(TODAY);
-  const [addingForDonor, setAddingForDonor] = useState<string | null>(null);
+  const upsert = trpc.donors.upsertTask.useMutation({ onSuccess: () => { void refetch(); void utils.donors.list.invalidate(); } });
+  const remove = trpc.donors.deleteTask.useMutation({ onSuccess: () => { void refetch(); void utils.donors.list.invalidate(); } });
+  const setReportCompletion = trpc.donors.setReportTaskCompletion.useMutation({ onSuccess: () => { void refetch(); void utils.donors.list.invalidate(); } });
+  const majorDonors = store.donors.filter(donor => donor.portfolio === 'major');
+  const allDonors = [...store.donors].sort((a, b) => a.name.localeCompare(b.name));
+  const [activeReport, setActiveReport] = useState<ReportKey | null>(null);
+  const [showCompleted, setShowCompleted] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [newDonorId, setNewDonorId] = useState('');
   const [newLabel, setNewLabel] = useState('');
   const [newDate, setNewDate] = useState(TODAY);
-  const [collapsedDonors, setCollapsedDonors] = useState<Set<string>>(new Set());
-  // Which donor groups have their completed-task history revealed
-  const [expandedDone, setExpandedDone] = useState<Set<string>>(new Set());
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editLabel, setEditLabel] = useState('');
+  const [editDate, setEditDate] = useState(TODAY);
+  const [completing, setCompleting] = useState<string | null>(null);
+  const [completeBy, setCompleteBy] = useState('Liz');
 
-  const toggleDone = (donorId: string) => {
-    setExpandedDone(prev => {
-      const next = new Set(prev);
-      if (next.has(donorId)) next.delete(donorId);
-      else next.add(donorId);
-      return next;
-    });
+  const manualTasks = useMemo(() => (dbTasks as any[]).filter(task => task.id.startsWith('manual-') && majorDonors.some(donor => donor.id === task.donorId)).map(task => ({ id: task.id, donorId: task.donorId, donorName: majorDonors.find(donor => donor.id === task.donorId)?.name ?? 'Unknown donor', label: task.label, dueDate: task.dueDate, kind: task.kind ?? 'manual', completedDate: task.completedDate ?? null, completedBy: task.completedBy ?? null } satisfies TaskRow)), [dbTasks, majorDonors]);
+  const priorityTasks = useMemo(() => majorDonors.map(donor => manualTasks.filter(task => task.donorId === donor.id && !task.completedDate).sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0]).filter(Boolean).sort((a, b) => a!.dueDate.localeCompare(b!.dueDate)) as TaskRow[], [majorDonors, manualTasks]);
+  const priorityDonorIds = useMemo(() => new Set(priorityTasks.map(task => task.donorId)), [priorityTasks]);
+  const upcomingContacts = useMemo(() => majorDonors.filter(donor => !priorityDonorIds.has(donor.id)).map(donor => ({ donor, date: nextContactDate(donor) })).sort((left, right) => (left.date ?? '9999-12-31').localeCompare(right.date ?? '9999-12-31')), [majorDonors, priorityDonorIds]);
+  const completedTasks = useMemo(() => manualTasks.filter(task => task.completedDate).sort((a, b) => (b.completedDate ?? '').localeCompare(a.completedDate ?? '')), [manualTasks]);
+  const submit = async (task: TaskRow, completedDate?: string, completedBy?: string) => upsert.mutateAsync({ id: task.id, donorId: task.donorId, kind: task.kind, label: task.label, dueDate: task.dueDate, completedDate, completedBy });
+  const setReport = async (report: (typeof REPORTS)[ReportKey], donor: Donor, completed: boolean, date: string, by: string) => {
+    await setReportCompletion.mutateAsync({ donorId: donor.id, taskId: report.taskId, label: report.label, dueDate: report.dueDate, completed, completedDate: date, completedBy: by });
   };
+  const addTask = async () => { if (!newDonorId || !newLabel.trim()) return; await upsert.mutateAsync({ id: `manual-${nanoid()}`, donorId: newDonorId, kind: 'manual', label: newLabel.trim(), dueDate: newDate }); setAdding(false); setNewLabel(''); setNewDate(TODAY); };
+  const saveEdit = async (task: TaskRow) => { await upsert.mutateAsync({ id: task.id, donorId: task.donorId, kind: task.kind, label: editLabel.trim() || task.label, dueDate: editDate || task.dueDate, completedDate: task.completedDate ?? undefined, completedBy: task.completedBy ?? undefined }); setEditing(null); };
 
-  const taskKey = (task: Pick<TaskRow, 'donorId' | 'id'>) => `${task.donorId}::${task.id}`;
+  const taskRow = (task: TaskRow, completed = false) => <div key={task.id} className="grid gap-2 border-b border-[oklch(0.92_0.012_78)] px-4 py-3 last:border-0 md:grid-cols-[112px_180px_1fr_auto] md:items-center"><div className="text-xs font-medium text-[oklch(0.52_0.022_65)]">{formatDate(task.dueDate)}</div><div className="font-display text-lg text-[oklch(0.22_0.018_55)]">{task.donorName}</div><div>{editing === task.id ? <div className="flex flex-wrap gap-2"><Input value={editLabel} onChange={event => setEditLabel(event.target.value)} className="h-8 flex-1" /><Input type="date" value={editDate} onChange={event => setEditDate(event.target.value)} className="h-8 w-36" /><Button size="sm" onClick={() => void saveEdit(task)}>Save</Button><Button size="sm" variant="outline" onClick={() => setEditing(null)}>Cancel</Button></div> : <div><p className={`text-sm ${completed ? 'line-through text-[oklch(0.52_0.022_65)]' : 'text-[oklch(0.22_0.018_55)]'}`}>{task.label}</p>{completed && <p className="mt-0.5 text-xs text-[oklch(0.52_0.022_65)]">Completed {formatDate(task.completedDate)}{task.completedBy ? ` by ${task.completedBy}` : ''}</p>}</div>}</div><div className="flex items-center gap-1.5">{!completed && completing === task.id ? <><select value={completeBy} onChange={event => setCompleteBy(event.target.value)} className="h-8 rounded border border-[oklch(0.84_0.018_75)] bg-white px-1 text-xs">{TEAM_MEMBERS.map(member => <option key={member}>{member}</option>)}</select><Button size="sm" onClick={() => { void submit(task, TODAY, completeBy); setCompleting(null); }}>Done</Button><Button size="sm" variant="outline" onClick={() => setCompleting(null)}>Cancel</Button></> : <>{!completed && <Button size="sm" variant="outline" onClick={() => setCompleting(task.id)}>Mark done</Button>}<button aria-label={`Edit ${task.label}`} onClick={() => { setEditing(task.id); setEditLabel(task.label); setEditDate(task.dueDate); }} className="rounded p-1.5 text-[oklch(0.52_0.022_65)] hover:bg-[oklch(0.94_0.012_75)]"><Pencil size={14} /></button>{completed && <Button size="sm" variant="outline" onClick={() => void submit(task)}>Reopen</Button>}<button aria-label={`Delete ${task.label}`} onClick={() => void remove.mutateAsync({ id: task.id, donorId: task.donorId })} className="rounded p-1.5 text-[oklch(0.55_0.20_27)] hover:bg-red-50"><Trash2 size={14} /></button></>}</div></div>;
 
-  // Server returns bare slugs, so key the lookup by donorId + slug.
-  const dbTaskMap = new Map((dbTasks as any[]).map((t: any) => [t.donorId + '::' + t.id, t]));
-
-  // Build the full task list: auto-generated tasks merged with DB tasks
-  const allTasks: TaskRow[] = [];
-  for (const donor of store.donors) {
-    const autoTasks = generateAutoTasks(donor);
-    const dismissed = new Set(donor.dismissedTasks ?? []);
-    for (const t of autoTasks) {
-      if (dismissed.has(t.id)) continue;
-      const dbRow = dbTaskMap.get(donor.id + '::' + t.id);
-      allTasks.push({
-        id: t.id,
-        donorId: donor.id,
-        donorName: donor.name,
-        kind: t.kind,
-        label: t.label,
-        dueDate: dbRow?.dueDate ?? t.dueDate,
-        completedDate: dbRow?.completedDate ?? null,
-        completedBy: dbRow?.completedBy ?? null,
-        isAuto: true,
-      });
-    }
-    // Manual tasks from DB for this donor
-    const manualDbTasks = (dbTasks as any[]).filter((d: any) => d.donorId === donor.id && d.id.startsWith('manual-'));
-    for (const t of manualDbTasks) {
-      allTasks.push({
-        id: t.id,
-        donorId: donor.id,
-        donorName: donor.name,
-        kind: t.kind,
-        label: t.label,
-        dueDate: t.dueDate,
-        completedDate: t.completedDate ?? null,
-        completedBy: t.completedBy ?? null,
-        isAuto: false,
-      });
-    }
-  }
-
-  // Group by donor, keeping open and completed tasks in separate buckets so each
-  // donor group can reveal its own history independently.
-  const byDonor = new Map<string, { donorName: string; tasks: TaskRow[]; done: TaskRow[] }>();
-  for (const t of allTasks) {
-    if (!byDonor.has(t.donorId)) byDonor.set(t.donorId, { donorName: t.donorName, tasks: [], done: [] });
-    const group = byDonor.get(t.donorId)!;
-    if (t.completedDate) group.done.push(t);
-    else group.tasks.push(t);
-  }
-  for (const group of Array.from(byDonor.values())) {
-    group.tasks.sort((a: TaskRow, b: TaskRow) => a.dueDate.localeCompare(b.dueDate));
-    // Most recently completed first
-    group.done.sort((a: TaskRow, b: TaskRow) => (b.completedDate ?? '').localeCompare(a.completedDate ?? ''));
-  }
-  // Drop donors with nothing to show at all
-  for (const [id, g] of Array.from(byDonor.entries())) {
-    if (g.tasks.length === 0 && g.done.length === 0) byDonor.delete(id);
-  }
-  const sortedDonorGroups = Array.from(byDonor.entries()).sort(([, a], [, b]) => {
-    const aDate = a.tasks[0]?.dueDate ?? '9999-12-31';
-    const bDate = b.tasks[0]?.dueDate ?? '9999-12-31';
-    return aDate.localeCompare(bDate) || a.donorName.localeCompare(b.donorName);
-  });
-
-  const handleComplete = async (task: TaskRow) => {
-    await upsertTaskMut.mutateAsync({
-      id: task.id,
-      donorId: task.donorId,
-      kind: task.kind,
-      label: task.label,
-      dueDate: task.dueDate,
-      completedDate: completeDate,
-      completedBy: completeBy,
-    });
-    setCompletingId(null);
-    setCompleteDate(TODAY);
-  };
-
-  const handleDelete = async (task: TaskRow) => {
-    await deleteTaskMut.mutateAsync({ id: task.id, donorId: task.donorId });
-    if (task.isAuto) {
-      const donor = store.donors.find(entry => entry.id === task.donorId);
-      if (donor) {
-        await updateDonor(donor.id, { dismissedTasks: Array.from(new Set([...(donor.dismissedTasks ?? []), task.id])) });
-      }
-    }
-  };
-
-  const handleReopen = async (task: TaskRow) => {
-    await upsertTaskMut.mutateAsync({
-      id: task.id,
-      donorId: task.donorId,
-      kind: task.kind,
-      label: task.label,
-      dueDate: task.dueDate,
-      completedDate: undefined,
-      completedBy: undefined,
-    });
-  };
-
-  const handleEdit = async (task: TaskRow) => {
-    await upsertTaskMut.mutateAsync({
-      id: task.id,
-      donorId: task.donorId,
-      kind: task.kind,
-      label: editLabel.trim() || task.label,
-      dueDate: editDate || task.dueDate,
-      completedDate: task.completedDate ?? undefined,
-      completedBy: task.completedBy ?? undefined,
-    });
-    setEditingId(null);
-  };
-
-  const handleAddTask = async (donorId: string) => {
-    if (!newLabel.trim()) return;
-    const id = 'manual-' + nanoid();
-    await upsertTaskMut.mutateAsync({
-      id,
-      donorId,
-      kind: 'onboarding',
-      label: newLabel.trim(),
-      dueDate: newDate,
-      completedDate: undefined,
-      completedBy: undefined,
-    });
-    setNewLabel('');
-    setNewDate(TODAY);
-    setAddingForDonor(null);
-  };
-
-  const toggleDonor = (donorId: string) => {
-    setCollapsedDonors(prev => {
-      const next = new Set(prev);
-      if (next.has(donorId)) next.delete(donorId);
-      else next.add(donorId);
-      return next;
-    });
-  };
-
-  const openCount = allTasks.filter(t => !t.completedDate).length;
-  const overdueCount = allTasks.filter(t => isOverdue(t.dueDate, t.completedDate)).length;
-  const totalDone = allTasks.filter(t => !!t.completedDate).length;
-
-  return (
-    <div className="max-w-4xl px-6 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-serif" style={{ color: 'oklch(0.22 0.018 55)', fontFamily: "'Cormorant Garamond', serif" }}>
-              Tasks
-            </h1>
-            <p className="text-sm mt-1" style={{ color: 'oklch(0.52 0.022 65)' }}>
-              {openCount} open task{openCount !== 1 ? 's' : ''} across {store.donors.length} donors
-              {overdueCount > 0 && <span className="ml-2 font-medium" style={{ color: 'oklch(0.60 0.18 30)' }}>· {overdueCount} overdue</span>}
-            </p>
-          </div>
-          {totalDone > 0 && (
-            <button
-              onClick={() => setExpandedDone(prev => prev.size > 0 ? new Set() : new Set(Array.from(byDonor.keys())))}
-              className="text-xs px-3 py-1.5 rounded-full border transition-colors"
-              style={{
-                borderColor: expandedDone.size > 0 ? 'oklch(0.55 0.15 145)' : 'oklch(0.84 0.018 75)',
-                color: expandedDone.size > 0 ? 'oklch(0.42 0.13 145)' : 'oklch(0.52 0.022 65)',
-                background: expandedDone.size > 0 ? 'oklch(0.95 0.05 145)' : 'transparent',
-              }}
-            >
-              {expandedDone.size > 0 ? 'Hide all completed' : `View all completed (${totalDone})`}
-            </button>
-          )}
-        </div>
-
-        {byDonor.size === 0 && (
-          <div className="text-center py-16" style={{ color: 'oklch(0.62 0.012 65)' }}>
-            <CheckCircle2 className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">No open tasks. All caught up.</p>
-          </div>
-        )}
-
-        <div className="space-y-4">
-          {sortedDonorGroups.map(([donorId, { donorName, tasks, done }]) => {
-            const isCollapsed = collapsedDonors.has(donorId);
-            const overdueForDonor = tasks.filter(t => isOverdue(t.dueDate, t.completedDate)).length;
-            const showDoneForDonor = expandedDone.has(donorId);
-            return (
-              <div key={donorId} className="rounded-xl border overflow-hidden" style={{ borderColor: 'oklch(0.88 0.014 75)', background: 'oklch(0.99 0.004 75)' }}>
-                {/* Donor header row */}
-                <button
-                  onClick={() => toggleDonor(donorId)}
-                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-[oklch(0.97_0.008_75)] transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    {isCollapsed ? <ChevronRight className="w-4 h-4 opacity-40" /> : <ChevronDown className="w-4 h-4 opacity-40" />}
-                    <span className="font-semibold text-sm" style={{ color: 'oklch(0.22 0.018 55)', fontFamily: "'Cormorant Garamond', serif", fontSize: '1rem' }}>{donorName}</span>
-                    <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'oklch(0.92 0.012 75)', color: 'oklch(0.42 0.022 65)' }}>
-                      {tasks.length} open
-                    </span>
-                    {overdueForDonor > 0 && (
-                      <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'oklch(0.95 0.06 30)', color: 'oklch(0.55 0.18 30)' }}>
-                        {overdueForDonor} overdue
-                      </span>
-                    )}
-                    {done.length > 0 && (
-                      <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'oklch(0.93 0.05 145)', color: 'oklch(0.42 0.13 145)' }}>
-                        {done.length} done
-                      </span>
-                    )}
-                  </div>
-                  <button
-                    onClick={e => { e.stopPropagation(); setAddingForDonor(addingForDonor === donorId ? null : donorId); setNewLabel(''); setNewDate(TODAY); }}
-                    className="flex items-center gap-1 text-xs px-2 py-1 rounded hover:bg-[oklch(0.94_0.012_75)] transition-colors"
-                    style={{ color: 'oklch(0.50 0.18 250)' }}
-                  >
-                    <Plus className="w-3 h-3" /> Add task
-                  </button>
-                </button>
-
-                {/* Add task inline form */}
-                {addingForDonor === donorId && (
-                  <div className="px-4 pb-3 pt-1 border-t flex items-center gap-2 flex-wrap" style={{ borderColor: 'oklch(0.92 0.012 75)', background: 'oklch(0.97 0.006 250)' }}>
-                    <Input
-                      value={newLabel}
-                      onChange={e => setNewLabel(e.target.value)}
-                      placeholder="Task description…"
-                      className="flex-1 text-sm h-8 min-w-40"
-                      autoFocus
-                      onKeyDown={e => e.key === 'Enter' && handleAddTask(donorId)}
-                    />
-                    <Input type="date" value={newDate} onChange={e => setNewDate(e.target.value)} className="text-sm h-8 w-36" />
-                    <Button size="sm" onClick={() => handleAddTask(donorId)} disabled={!newLabel.trim()} className="h-8 text-xs">Save</Button>
-                    <button onClick={() => setAddingForDonor(null)} className="text-xs" style={{ color: 'oklch(0.52 0.022 65)' }}>cancel</button>
-                  </div>
-                )}
-
-                {/* Task rows */}
-                {!isCollapsed && (
-                  <div className="divide-y" style={{ borderColor: 'oklch(0.92 0.012 75)' }}>
-                    {tasks.map(task => {
-                      const done = !!task.completedDate;
-                      const overdue = isOverdue(task.dueDate, task.completedDate);
-                      const isConfirming = completingId === taskKey(task);
-                      const dotColor = task.kind === 'recurring' ? 'oklch(0.75 0.12 80)' : 'oklch(0.50 0.18 250)';
-                      return (
-                        <div key={task.id + task.donorId} className="px-4 py-2.5 flex items-start gap-3" style={{ background: done ? 'oklch(0.985 0.004 75)' : 'transparent' }}>
-                          {/* Status dot */}
-                          <div className="flex-shrink-0 mt-0.5">
-                            {done
-                              ? <CheckCircle2 className="w-4 h-4" style={{ color: 'oklch(0.55 0.15 145)' }} />
-                              : <Circle className="w-4 h-4 opacity-30" style={{ color: dotColor }} />
-                            }
-                          </div>
-                          {/* Task content */}
-                          <div className="flex-1 min-w-0">
-                            {editingId === taskKey(task) ? (
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <Input value={editLabel} onChange={e => setEditLabel(e.target.value)} className="text-sm h-7 px-2 flex-1 min-w-32" autoFocus onKeyDown={e => e.key === 'Enter' && handleEdit(task)} />
-                                <Input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} className="text-sm h-7 px-2 w-36" />
-                                <button onClick={() => handleEdit(task)} className="text-xs px-2 py-0.5 rounded text-white" style={{ background: 'oklch(0.22 0.018 55)' }}>Save</button>
-                                <button onClick={() => setEditingId(null)} className="text-xs" style={{ color: 'oklch(0.52 0.022 65)' }}>cancel</button>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className={`text-sm ${done ? 'line-through opacity-50' : ''}`} style={{ color: 'oklch(0.22 0.018 55)' }}>
-                                  {task.label}
-                                </span>
-                                <span className="text-xs" style={{ color: overdue ? 'oklch(0.55 0.18 30)' : 'oklch(0.62 0.012 65)' }}>
-                                  {overdue ? `Overdue · ${formatDate(task.dueDate)}` : formatDate(task.dueDate)}
-                                </span>
-                              </div>
-                            )}
-                            {done && task.completedDate && (
-                              <p className="text-xs mt-0.5" style={{ color: 'oklch(0.62 0.012 65)' }}>
-                                Completed {formatDate(task.completedDate)}{task.completedBy ? ` by ${task.completedBy}` : ''}
-                              </p>
-                            )}
-                            {/* Confirm completion row */}
-                            {isConfirming && !done && (
-                              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                                <label className="text-xs" style={{ color: 'oklch(0.52 0.022 65)' }}>By:</label>
-                                <select value={completeBy} onChange={e => setCompleteBy(e.target.value)} className="text-xs border rounded px-1.5 py-0.5 bg-white" style={{ borderColor: 'oklch(0.84 0.018 75)' }}>
-                                  {TEAM_MEMBERS.map(m => <option key={m} value={m}>{m}</option>)}
-                                </select>
-                                <label className="text-xs" style={{ color: 'oklch(0.52 0.022 65)' }}>Date:</label>
-                                <Input type="date" value={completeDate} onChange={e => setCompleteDate(e.target.value)} className="text-xs h-6 px-1.5 w-32" />
-                                <button onClick={() => handleComplete(task)} className="text-xs px-2 py-0.5 rounded text-white" style={{ background: 'oklch(0.55 0.15 145)' }}>Confirm</button>
-                                <button onClick={() => setCompletingId(null)} className="text-xs" style={{ color: 'oklch(0.52 0.022 65)' }}>cancel</button>
-                              </div>
-                            )}
-                          </div>
-                          {/* Actions */}
-                          {!done && !isConfirming && (
-                            <div className="flex items-center gap-1.5 flex-shrink-0">
-                              {editingId !== taskKey(task) && (
-                                <button
-                                  onClick={() => { setEditingId(taskKey(task)); setEditLabel(task.label); setEditDate(task.dueDate); setCompletingId(null); }}
-                                  className="p-1 rounded hover:bg-[oklch(0.94_0.012_75)] transition-colors"
-                                  style={{ color: 'oklch(0.52 0.022 65)' }}
-                                >
-                                  <Pencil className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-                              <button
-                                onClick={() => { setCompletingId(taskKey(task)); setCompleteDate(TODAY); }}
-                                className="text-xs px-2 py-0.5 rounded border transition-colors hover:bg-green-50"
-                                style={{ color: 'oklch(0.45 0.15 145)', borderColor: 'oklch(0.75 0.12 145)' }}
-                              >
-                                Mark done
-                              </button>
-                              <button onClick={() => handleDelete(task)} className="p-1 rounded hover:bg-red-50 transition-colors" style={{ color: 'oklch(0.55 0.18 27)' }}>
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                    {tasks.length === 0 && (
-                      <div className="px-4 py-3 text-xs" style={{ color: 'oklch(0.62 0.012 65)' }}>
-                        No open tasks for this donor.
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Completed task history */}
-                {!isCollapsed && done.length > 0 && (
-                  <div className="border-t" style={{ borderColor: 'oklch(0.92 0.012 75)' }}>
-                    <button
-                      onClick={() => toggleDone(donorId)}
-                      className="w-full flex items-center gap-1.5 px-4 py-2 text-xs transition-colors hover:bg-[oklch(0.97_0.008_75)]"
-                      style={{ color: 'oklch(0.42 0.13 145)' }}
-                    >
-                      {showDoneForDonor ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                      {showDoneForDonor ? 'Hide completed tasks' : `View completed tasks (${done.length})`}
-                    </button>
-                    {showDoneForDonor && (
-                      <div className="divide-y" style={{ borderColor: 'oklch(0.94 0.008 75)', background: 'oklch(0.982 0.004 75)' }}>
-                        {done.map(task => (
-                          <div key={task.id + task.donorId} className="px-4 py-2.5 flex items-start gap-3">
-                            <div className="flex-shrink-0 mt-0.5">
-                              <CheckCircle2 className="w-4 h-4" style={{ color: 'oklch(0.55 0.15 145)' }} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              {editingId === taskKey(task) ? (
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <Input value={editLabel} onChange={e => setEditLabel(e.target.value)} className="text-sm h-7 px-2 flex-1 min-w-32" autoFocus onKeyDown={e => e.key === 'Enter' && handleEdit(task)} />
-                                  <Input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} className="text-sm h-7 px-2 w-36" />
-                                  <button onClick={() => handleEdit(task)} className="text-xs px-2 py-0.5 rounded text-white" style={{ background: 'oklch(0.22 0.018 55)' }}>Save</button>
-                                  <button onClick={() => setEditingId(null)} className="text-xs" style={{ color: 'oklch(0.52 0.022 65)' }}>cancel</button>
-                                </div>
-                              ) : (
-                                <span className="text-sm line-through opacity-55" style={{ color: 'oklch(0.22 0.018 55)' }}>
-                                  {task.label}
-                                </span>
-                              )}
-                              <p className="text-xs mt-0.5" style={{ color: 'oklch(0.48 0.10 145)' }}>
-                                Completed {formatDate(task.completedDate!)}{task.completedBy ? ` by ${task.completedBy}` : ''}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-1.5 flex-shrink-0">
-                              {editingId !== taskKey(task) && (
-                                <button
-                                  onClick={() => { setEditingId(taskKey(task)); setEditLabel(task.label); setEditDate(task.dueDate); }}
-                                  className="p-1 rounded hover:bg-[oklch(0.94_0.012_75)] transition-colors"
-                                  style={{ color: 'oklch(0.52 0.022 65)' }}
-                                  aria-label={`Edit ${task.label}`}
-                                >
-                                  <Pencil className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-                              <button
-                                onClick={() => handleReopen(task)}
-                                className="text-xs px-2 py-0.5 rounded border transition-colors hover:bg-[oklch(0.96_0.012_250)]"
-                                style={{ color: 'oklch(0.50 0.18 250)', borderColor: 'oklch(0.80 0.10 250)' }}
-                              >
-                                Reopen
-                              </button>
-                              <button onClick={() => handleDelete(task)} className="p-1 rounded hover:bg-red-50 transition-colors" style={{ color: 'oklch(0.55 0.18 27)' }}>
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-      </div>
-
-      {/* Color legend */}
-      <div className="mt-8 rounded-lg border px-4 py-3 flex flex-wrap gap-x-6 gap-y-2" style={{ borderColor: 'oklch(0.88 0.014 75)', background: 'oklch(0.985 0.008 80)' }}>
-        <span className="text-xs uppercase tracking-widest w-full mb-0.5" style={{ color: 'oklch(0.52 0.022 65)' }}>Legend</span>
-        <div className="flex items-center gap-1.5">
-          <Circle className="w-3.5 h-3.5" style={{ color: 'oklch(0.50 0.18 250)' }} />
-          <span className="text-xs" style={{ color: 'oklch(0.42 0.022 65)' }}>Blue — onboarding &amp; manual tasks</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <Circle className="w-3.5 h-3.5" style={{ color: 'oklch(0.75 0.12 80)' }} />
-          <span className="text-xs" style={{ color: 'oklch(0.42 0.022 65)' }}>Gold — recurring annual tasks</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <CheckCircle2 className="w-3.5 h-3.5" style={{ color: 'oklch(0.55 0.15 145)' }} />
-          <span className="text-xs" style={{ color: 'oklch(0.42 0.022 65)' }}>Green — completed</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs font-medium" style={{ color: 'oklch(0.55 0.18 30)' }}>Red text</span>
-          <span className="text-xs" style={{ color: 'oklch(0.42 0.022 65)' }}>— overdue</span>
-        </div>
-      </div>
-    </div>
-  );
+  return <div className="max-w-6xl px-6 py-8"><div className="mb-6"><h1 className="font-display text-4xl text-[oklch(0.22_0.018_55)]">Tasks</h1><p className="mt-1 text-sm text-[oklch(0.52_0.022_65)]">Each major donor appears once: as an actionable priority or an upcoming connection, never both.</p></div><div className="flex flex-wrap gap-2 border-b border-[oklch(0.87_0.018_75)] pb-4"><Button variant="outline" onClick={() => setActiveReport(activeReport === 'semi-annual-2026' ? null : 'semi-annual-2026')}>2026 Semi-Annual / 6-Month Report</Button><Button variant="outline" onClick={() => setActiveReport(activeReport === 'tax-receipt-2027' ? null : 'tax-receipt-2027')}>2027 Tax Receipt</Button><Button variant="outline" onClick={() => setActiveReport(activeReport === 'annual-report-2027' ? null : 'annual-report-2027')}>2027 Annual Report (2026 year)</Button></div>{activeReport && <ReportGrid report={REPORTS[activeReport]} donors={allDonors} tasks={dbTasks as any[]} onSetCompletion={(donor, completed, date, by) => setReport(REPORTS[activeReport], donor, completed, date, by)} />}<section className="mt-7 overflow-hidden rounded-xl border border-[oklch(0.87_0.018_75)] bg-white"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-[oklch(0.89_0.012_78)] bg-[oklch(0.975_0.012_80)] px-4 py-3"><div><h2 className="font-display text-2xl text-[oklch(0.22_0.018_55)]">Next major-donor priorities</h2><p className="text-xs text-[oklch(0.52_0.022_65)]">{priorityTasks.length} donors with an actionable journey task</p></div><div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => setShowCompleted(value => !value)}>{showCompleted ? 'Hide completed' : `View completed (${completedTasks.length})`}</Button><Button size="sm" onClick={() => { setAdding(true); setNewDonorId(majorDonors[0]?.id ?? ''); }}><Plus size={14} className="mr-1" />Add task</Button></div></div>{adding && <div className="grid gap-2 border-b border-[oklch(0.89_0.012_78)] bg-[oklch(0.97_0.02_250)] p-3 md:grid-cols-[190px_1fr_145px_auto_auto]"><select value={newDonorId} onChange={event => setNewDonorId(event.target.value)} className="h-9 rounded border border-[oklch(0.84_0.018_75)] bg-white px-2 text-sm">{majorDonors.map(donor => <option key={donor.id} value={donor.id}>{donor.name}</option>)}</select><Input value={newLabel} onChange={event => setNewLabel(event.target.value)} placeholder="Next priority task" /><Input type="date" value={newDate} onChange={event => setNewDate(event.target.value)} /><Button size="sm" onClick={() => void addTask()} disabled={!newLabel.trim()}>Save</Button><Button size="sm" variant="outline" onClick={() => setAdding(false)}>Cancel</Button></div>}<div>{priorityTasks.length ? priorityTasks.map(task => taskRow(task)) : <p className="p-6 text-sm text-[oklch(0.52_0.022_65)]">No manually added major-donor priorities are currently due.</p>}</div>{showCompleted && <div className="border-t border-[oklch(0.89_0.012_78)]"><div className="flex items-center gap-2 bg-[oklch(0.985_0.006_80)] px-4 py-2 text-xs font-medium uppercase tracking-[0.12em] text-[oklch(0.52_0.022_65)]"><CheckCircle2 size={14} />Completed major-donor tasks</div>{completedTasks.map(task => taskRow(task, true))}</div>}</section><section className="mt-5 overflow-hidden rounded-xl border border-[oklch(0.87_0.018_75)] bg-white"><div className="border-b border-[oklch(0.89_0.012_78)] bg-[oklch(0.975_0.012_80)] px-4 py-3"><h2 className="font-display text-2xl text-[oklch(0.22_0.018_55)]">Upcoming donor contacts</h2><p className="text-xs text-[oklch(0.52_0.022_65)]">{upcomingContacts.length} major donors without an actionable journey task, sorted by their next-connection date.</p></div><div>{upcomingContacts.map(({ donor, date }) => <button key={donor.id} onClick={() => setLocation(`/?donor=${encodeURIComponent(donor.id)}&focus=log-interaction`)} className="grid w-full gap-2 border-b border-[oklch(0.92_0.012_78)] px-4 py-3 text-left transition-colors last:border-0 hover:bg-[oklch(0.97_0.02_250)] md:grid-cols-[112px_180px_1fr_auto] md:items-center"><div className="text-xs font-medium text-[oklch(0.52_0.022_65)]">{formatDate(date)}</div><div className="font-display text-lg text-[oklch(0.22_0.018_55)]">{donor.name}</div><p className="text-sm text-[oklch(0.42_0.018_55)]">{donor.nextAction || 'Next connection due based on communication cadence.'}</p><span className="text-xs font-medium text-[oklch(0.50_0.18_250)]">Log interaction →</span></button>)}{!upcomingContacts.length && <p className="p-6 text-sm text-[oklch(0.52_0.022_65)]">Every major donor currently has an actionable journey task.</p>}</div></section></div>;
 }

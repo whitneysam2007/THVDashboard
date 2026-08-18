@@ -14,6 +14,8 @@ import {
 import { nanoid } from "nanoid";
 import { tagsWithPortfolio } from '../shared/donorPortfolios';
 import { joinAttendeeNotes, splitAttendeeNotes } from './medicalProfileStorage';
+import { joinTripNotes, splitTripNotes } from './tripOperationsStorage';
+import { getGardenTowerPdfDownloadUrl, getUsanaProject, saveUsanaProject, uploadGardenTowerPdf } from './usanaStorage';
 
 type TeamAccessRow = {
   email: string;
@@ -29,6 +31,19 @@ export const appRouter = router({
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(() => ({ success: true } as const)),
+  }),
+
+  usana: router({
+    get: protectedProcedure.query(() => getUsanaProject()),
+    update: protectedProcedure.input(z.object({
+      contractNumber: z.string().optional(),
+      totalFundsUsd: z.number().optional(),
+      fundsReceived: z.boolean().optional(),
+      contactName: z.string().optional(),
+      contactEmail: z.string().optional(),
+      contactPhone: z.string().optional(),
+      contactAddress: z.string().optional(),
+    })).mutation(({ input }) => saveUsanaProject(input)),
   }),
 
   teamAccess: router({
@@ -261,6 +276,39 @@ export const appRouter = router({
       return { success: true };
     }),
 
+    setReportTaskCompletion: protectedProcedure.input(z.object({
+      donorId: z.string(),
+      taskId: z.string(),
+      label: z.string(),
+      dueDate: z.string(),
+      completed: z.boolean(),
+      completedDate: z.string().optional(),
+      completedBy: z.string().optional(),
+    })).mutation(async ({ input }) => {
+      const activityId = `report-${input.donorId}-${input.taskId}`;
+      const date = input.completedDate ?? new Date().toISOString().slice(0, 10);
+      const author = input.completedBy ?? 'Liz';
+      await upsertTask({
+        id: input.taskId,
+        donorId: input.donorId,
+        kind: 'recurring',
+        label: input.label,
+        dueDate: input.dueDate,
+        completedDate: input.completed ? date : undefined,
+        completedBy: input.completed ? author : undefined,
+      });
+      if (input.completed) {
+        const activities = await getActivitiesForDonor(input.donorId);
+        const activity = { donorId: input.donorId, date, author, note: `${input.label} sent.` };
+        if (activities.some((existing: any) => existing.id === activityId)) await updateActivity(activityId, activity);
+        else await insertActivity({ id: activityId, ...activity });
+      } else {
+        await deleteActivity(activityId);
+      }
+      await recalculateLastContactDate(input.donorId);
+      return { success: true, activityId };
+    }),
+
     deleteTask: protectedProcedure.input(z.object({ id: z.string(), donorId: z.string() })).mutation(async ({ input }) => {
       await deleteTask(input.id, input.donorId);
       await recalculateLastContactDate(input.donorId);
@@ -275,14 +323,17 @@ export const appRouter = router({
   trips: router({
     list: protectedProcedure.query(async () => {
       const allTrips = await getAllTrips();
-      return Promise.all(allTrips.map(async (t: any) => ({
-        ...t,
+      return Promise.all(allTrips.map(async (t: any) => {
+        const { notes, operations } = splitTripNotes(t.notes);
+        return {
+        ...t, notes: notes || undefined, operations,
         teamMembers: JSON.parse(t.teamMembers || '[]') as string[],
         attendees: (await getAttendeesForTrip(t.id)).map((a: any) => {
           const { notes, medicalProfile } = splitAttendeeNotes(a.notes);
-          return { ...a, notes: notes || undefined, skills: JSON.parse(a.skills || '[]') as string[], medicalProfile };
+          return { ...a, notes: notes || undefined, skills: JSON.parse(a.skills || '[]') as string[], medicalProfile, tripLogistics: (medicalProfile as any)?.tripLogistics };
         }),
-      })));
+        };
+      }));
     }),
 
     create: protectedProcedure.input(z.object({
@@ -291,9 +342,10 @@ export const appRouter = router({
       endDate: z.string(),
       teamMembers: z.array(z.string()).default([]),
       notes: z.string().optional(),
+      operations: z.record(z.string(), z.unknown()).optional(),
     })).mutation(async ({ input }) => {
       const id = nanoid();
-      await insertTrip({ ...input, id, teamMembers: JSON.stringify(input.teamMembers) });
+      await insertTrip({ ...input, id, teamMembers: JSON.stringify(input.teamMembers), notes: joinTripNotes(input.notes, input.operations as any) });
       return { id };
     }),
 
@@ -304,13 +356,32 @@ export const appRouter = router({
       endDate: z.string().optional(),
       teamMembers: z.array(z.string()).optional(),
       notes: z.string().optional(),
+      operations: z.record(z.string(), z.unknown()).optional(),
     })).mutation(async ({ input }) => {
-      const { id, teamMembers, ...rest } = input;
+      const { id, teamMembers, operations, ...rest } = input;
       const data: Record<string, unknown> = { ...rest };
       if (teamMembers !== undefined) data.teamMembers = JSON.stringify(teamMembers);
+      if (operations !== undefined || rest.notes !== undefined) {
+        const trips = await getAllTrips();
+        const existing = trips.find((trip: any) => trip.id === id);
+        if (!existing) throw new Error('Trip not found.');
+        const current = splitTripNotes((existing as any).notes);
+        data.notes = joinTripNotes(rest.notes ?? current.notes, (operations as any) ?? current.operations);
+      }
       await updateTripById(id, data as any);
       return { success: true };
     }),
+
+    uploadGardenTowerDocument: protectedProcedure.input(z.object({
+      tripId: z.string(),
+      fileName: z.string().min(1).max(160),
+      base64: z.string().min(1).max(14_000_000),
+    })).mutation(async ({ input }) => {
+      return uploadGardenTowerPdf(input.tripId, input.fileName, Buffer.from(input.base64, 'base64'));
+    }),
+
+    getGardenTowerDocumentUrl: protectedProcedure.input(z.object({ key: z.string().min(1) }))
+      .query(({ input }) => getGardenTowerPdfDownloadUrl(input.key)),
 
     delete: protectedProcedure.input(z.object({ id: z.string() })).mutation(async ({ input }) => {
       await deleteTripById(input.id);
@@ -333,7 +404,7 @@ export const appRouter = router({
         professionalRole: z.string().optional(), specialty: z.string().optional(), yearsExperience: z.string().optional(), bio: z.string().optional(),
         clinicalStrengths: z.array(z.string()).optional(), fieldReadiness: z.string().optional(), homeVisitComfort: z.string().optional(),
         assignmentPriorities: z.string().optional(), guatemalaRecommendations: z.string().optional(), thvAssignment: z.string().optional(),
-        assignmentStatus: z.string().optional(), planningNotes: z.string().optional(),
+        assignmentStatus: z.string().optional(), planningNotes: z.string().optional(), tripLogistics: z.record(z.string(), z.unknown()).optional(),
       }).optional(),
     })).mutation(async ({ input }) => {
       const id = nanoid();
@@ -368,7 +439,7 @@ export const appRouter = router({
         professionalRole: z.string().optional(), specialty: z.string().optional(), yearsExperience: z.string().optional(), bio: z.string().optional(),
         clinicalStrengths: z.array(z.string()).optional(), fieldReadiness: z.string().optional(), homeVisitComfort: z.string().optional(),
         assignmentPriorities: z.string().optional(), guatemalaRecommendations: z.string().optional(), thvAssignment: z.string().optional(),
-        assignmentStatus: z.string().optional(), planningNotes: z.string().optional(),
+        assignmentStatus: z.string().optional(), planningNotes: z.string().optional(), tripLogistics: z.record(z.string(), z.unknown()).optional(),
       }).optional(),
     })).mutation(async ({ input }) => {
       const { id, knowsAtTHV, isTeen, speaksSpanish, confirmed, purchasedTicket, skills, medicalProfile, ...rest } = input;

@@ -101,7 +101,7 @@
 - [x] Major donor cards: consistently show recurring annual amount and lifetime amount given on recurring cards
 - [x] Deployment: pushed the Thank You Tracker and approved major-donor card cleanup to GitHub for Netlify deployment
 - [x] Deployment verification: confirmed the public Netlify login page is reachable after the lower-tier journey release
-- [ ] Deployment verification: confirm after sign-in that Thank You Tracker is present, blue rows sort before green, top-right envelopes and stray zero artifacts are gone, and recurring cards show both annual and lifetime amounts
+- [x] Deployment verification: confirm after sign-in that Thank You Tracker is present, blue rows sort before green, top-right envelopes and stray zero artifacts are gone, and recurring cards show both annual and lifetime amounts
 - [x] Monthly Giving: clarified that expected annual giving is included in the major donor page’s expected annual recurring amount
 - [x] Deployment: pushed the approved Monthly Giving summary clarification and blue-first tracker ordering to GitHub for Netlify deployment
 - [x] Thank You Tracker: sorted blue not-sent entries before green sent entries
@@ -114,7 +114,82 @@
 - [x] Medical Volunteers profiles: defined professional snapshot, clinical strengths, field-readiness, and Guatemala assignment tracking fields
 - [x] Medical Volunteers: include qualifying Possible, Confirmed, and Ticket Purchased attendees and show each full attendance status on their profile card
 - [x] Medical Volunteers profiles: added approved professional snapshot, clinical strengths, field-readiness, and Guatemala assignment sections in clickable dashboard cards
-- [ ] Deployment: push the approved Medical Volunteers profile dashboard to GitHub for Netlify deployment
+- [x] Deployment: pushed the approved Medical Volunteers profile dashboard to GitHub for Netlify deployment
+- [x] Trips redesign: build per-trip workspaces for attendees, $500 deposit logistics, flights, expenses, and trip to-dos
+- [x] Trips experience: keep trip cards compact and open one focused workspace on demand
+- [x] Trips workspace: integrate $500 deposit, ticket status, and logistics controls into the Attendees tab and remove the extra Going logistics tab
+- [x] Trip contributions: track fixed $500 Guatemala program contributions by trip and calendar year inside Trips only
+- [x] Trips logistics: add attendee flight details and a per-trip flight compilation view
+- [x] Garden Tower / USANA: add a global program tracking panel in the Trips area
+- [x] Trip expenses: add description, USD, quetzales, card or reimbursement owner, and receipt-link fields
+- [x] Trip planning: add prioritized, reorderable Amy-and-Kirsten task lists with owner, notes, due date, and completion state
+- [x] USANA Garden Tower: track contract number, Michelle contact, planned versus received funds, V2V trip tower counts, and Guatemala PDF documents
+- [x] USANA persistence: store global contract, contact, and received-funds information in a stable app-level record rather than on a trip
+- [x] Garden Tower PDFs: store documents in production-ready Supabase Storage and generate controlled download links
+- [x] USANA regression coverage: test global project persistence, per-trip tower data, and document storage behavior
+- [x] USANA routes: test protected global project retrieval and persistence through the app-level record
+- [x] Garden Tower operations: test per-trip tower fields and document keys round-trip through trip operation storage
+- [x] Garden Tower documents: test PDF handling and controlled signed download behavior
+- [x] USANA access control: reject unauthenticated callers for global project and document routes
+- [x] USANA persistence: test update-then-read behavior through the app-level record
+- [x] Garden Tower error cases: test invalid document keys and oversized upload rejection
+- [x] USANA storage integration: verify a real isolated project-record save and re-read in Supabase Storage
+- [x] Garden Tower storage integration: verify real PDF upload, signed URL generation, and cleanup in Supabase Storage
+- [x] Flight compilation: add a printable downloadable PDF summary for Amy
+- [x] Garden Tower labels: use the approved commitment, USANA funds, and Guatemala GT assignments PDF language
+- [x] USANA Garden Tower: copy the existing USANA Foundation donor contact information into the global project contact record
+- [x] Trip expenses: add saved per-trip 7.41 GTQ-per-USD Senahú bank rate, USD and quetzal totals, combined USD total, saved divisor, and per-person cost
+- [x] USANA Garden Tower: order V2V trip plans chronologically from earliest to latest
+- [x] Trip attendees: use full-width Potential and Confirmed rows plus a top Going table showing name, tags, Purchased ticket, and Paid $500 to program/deposit
+- [x] Trip attendees: show total attendee count separately from the Going travel count in the roster header
+- [x] Going attendees: show the total program contribution at the bottom of the Going table and remove the green Trips-level contribution panel
+- [x] USANA Garden Tower: replace the yellow treatment with a distinctive purple project panel
+- [x] Trip expenses: keep the entry form hidden until the user opens it with a + Add expense button
+- [x] Trip expenses: allow each expense to be edited and deleted only after an explicit confirmation
+- [x] Reports & Resources: add a sidebar library linking to the six supplied Google Drive reports and collateral resources
+- [x] Trip attendees: include assigned team members as tagged Leaders, with Spanish and Medical tags supplied by Liz, and show one unified total trip number
+- [x] Going workflow: automatically include team Leaders with ticket tracking, while clearly exempting them from the $500 guest program contribution
+- [x] Trip and medical tags: use green Spanish, purple Leader, and orange Medical/Nurse/Doctor/OB/Radiology tags; classify Liz and Emily as Nurses
+- [x] Medical Volunteers: exclude assigned THV team Leaders from clinical-volunteer profiles even when clinical tags appear in Trips
+- [x] Trips: remove donor-attendance controls and derive trip-flagged donors as Potential attendees
+- [x] Reports & Resources: display only the user-supplied titles, with no categories, descriptions, or subtitle
+- [x] Tasks: simplify to one next major-donor priority per donor, ordered by the same next-contact date used on Major Donors, excluding newsletter and report tasks
+- [x] Tasks: retain add, edit, complete, and delete controls for the simplified major-donor priority list
+- [x] Tasks reporting grids: add 2026 Semi-Annual / 6-Month Report, 2027 Tax Receipt, and 2027 Annual Report (2026 year) recipient lists for all portfolios
+- [x] Tasks reporting grids: show name, email, mailing address, relevant giving amount, and a completion checkbox synchronized to the donor task
+- [x] Tasks reporting grids: use prior-year giving for each report, including 2025 giving for the 2026 semi-annual grid
+- [x] Trips: open and save flight details when Purchased ticket is checked, syncing directly to Flight Compilation
+- [x] Trips: rename Trip planning to Trip to-do list
+- [x] Trips itinerary: add a fully editable daily itinerary tab with chronological day headers and drag-and-drop activity movement
+- [x] Trips itinerary: review the supplied V2V one-pager and use its verified schedule content as editable initial itinerary entries where applicable
+- [x] Reports & Resources: rename the Village to Village resource using the approved expedition-information title
+- [x] Trips tags: standardize the Spanish label as SPANISH in every attendee state
+- [x] Trips roster summary: say leaders and volunteers are currently going
+- [x] Medical Volunteers: add a Download Bio PDF action that compiles recorded profiles by trip for the Guatemala team
+- [x] Trips itinerary: add editable time fields and explicit per-activity drag and delete controls
+- [x] Trips itinerary: convert the existing combined Village to Village sample entries into individual activity rows
+- [x] Trips itinerary: prevent the legacy activity conversion from repeatedly updating the workspace
+- [x] Trips itinerary: add a Download Itinerary PDF action that prints the complete day-by-day schedule
+- [x] USANA Garden Tower: derive total towers and total grant dollars from per-trip plan inputs, replacing the received-funds checkbox
+- [x] Trips itinerary: add a Use previous itinerary template control that copies a selected completed or past trip itinerary into the current trip
+- [x] Trips itinerary: widen activity time fields and automatically order same-day activities chronologically when times are entered
+- [x] Tasks reporting grids: log each completed report as a dated donor interaction that updates the next-contact calculation
+- [x] Tasks reporting grids: add Thank You Tracker-style individual and batch selection, sent/completed date, and completion action
+- [x] Tasks: separate all major donors into exclusive, date-sorted Next Major-Donor Priorities and Upcoming Donor Contacts tables
+- [x] Tasks reporting grids: ensure unchecking a sent report clears its completion and linked donor interaction
+- [x] USANA Garden Tower: remove the separate Total funds (USD) field entirely and rely on per-trip derived totals
+- [x] Upcoming donor contacts: make each donor row open the donor card directly at Log interaction
+- [x] Trip to-do list: sort tasks automatically by due date and remove manual up/down ordering controls
+- [x] Trip to-do list: group tasks by named owner, including Amy and Kirsten, with legacy owner-required tasks visible until assigned
+- [x] Trip to-do list: allow assignment to every THV team member and filter the upcoming trip list by assignee
+- [x] Navigation: rename Tasks to Donor Tasks, place it below Monthly Giving, and move Initiatives to the bottom of the sidebar
+- [x] Trip to-do list: allow task editing and confirmation-protected deletion
+- [x] Trip to-do list: hide completed tasks by default and provide a Show completed control
+- [x] Trip to-do list: add Yvonne/Nieve to assignment dropdowns and personal filters
+- [x] Trip to-do list: require one named owner for every task and remove Shared / unallocated controls
+- [x] Trip to-do list: keep the new-task fields hidden until + Add to-do is selected
+- [x] Trip to-do list: place + Add to-do immediately to the left of Show completed
+- [x] Trip to-do list: show the expanded entry form directly beneath the header controls
 - [x] Deployment: pushed the approved lower-tier donor journey log to GitHub for Netlify deployment
 - [x] Tasks page: sort donor task cards from earliest outstanding task date to latest task date
 - [x] Major donor status: based active or inactive state solely on outreach within communication cadence and cleared Kirk Foundation’s stale inactive override after the June 2026 donor-packet contact
@@ -129,6 +204,8 @@
 - [x] Restore Liz’s live Netlify owner login before resuming sandbox preview or Trips changes
 - [x] Reset and directly verify the live owner password flow for emary626@gmail.com without relying on unapproved organization email addresses
 - [x] Fix the false inactive-access screen after valid emary626@gmail.com password sign-in on Netlify
+- [x] Donor portfolio headers: calculate donor count, 2026 contributions, and expected recurring annual amount independently for Major Donors, Donors 500–5K, and Monthly Giving
+- [x] Validation: remove the prior owner-password dependency from automated checks after the owner password changed
 
 ## Active bug
 

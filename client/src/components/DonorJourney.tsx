@@ -42,9 +42,10 @@ interface DonorJourneyProps {
   liveTasks?: TaskEntry[];
   onActivityAdded?: () => void;
   onTaskCompleted?: () => void;
+  openLogInteraction?: boolean;
 }
 
-export default function DonorJourney({ donor, currentUser, liveActivities, liveTasks, onActivityAdded, onTaskCompleted }: DonorJourneyProps) {
+export default function DonorJourney({ donor, currentUser, liveActivities, liveTasks, onActivityAdded, onTaskCompleted, openLogInteraction = false }: DonorJourneyProps) {
   const { addActivity, updateDonor } = useDashboard();
   const upsertTaskMut = trpc.donors.upsertTask.useMutation();
   const deleteTaskMut = trpc.donors.deleteTask.useMutation();
@@ -75,6 +76,7 @@ export default function DonorJourney({ donor, currentUser, liveActivities, liveT
   const [completeDate, setCompleteDate] = useState(TODAY);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
+  const logInteractionRef = useRef<HTMLDivElement>(null);
 
   // Undo toast state
   const [undoSnapshot, setUndoSnapshot] = useState<{ completedTasks: TaskEntry[]; dismissedTasks: string[]; label: string } | null>(null);
@@ -102,6 +104,13 @@ export default function DonorJourney({ donor, currentUser, liveActivities, liveT
   };
 
   useEffect(() => () => { if (undoTimer.current) clearTimeout(undoTimer.current); }, []);
+
+  useEffect(() => {
+    if (!openLogInteraction) return;
+    setShowLogInteraction(true);
+    setShowAddTask(false);
+    window.setTimeout(() => logInteractionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 0);
+  }, [openLogInteraction, donor.id]);
 
   const donorWithLiveData = { ...donor, ...(liveActivities ? { activities: liveActivities } : {}), ...(liveTasks ? { completedTasks: liveTasks } : {}) };
   const fullTimeline = buildTimeline(donorWithLiveData);
@@ -278,7 +287,7 @@ export default function DonorJourney({ donor, currentUser, liveActivities, liveT
 
       {/* Log interaction — collapsible form */}
       {showLogInteraction && (
-        <div className="mb-4 p-3 rounded-lg border border-[oklch(0.84_0.018_75)] bg-[oklch(0.965_0.012_80)] space-y-2">
+        <div ref={logInteractionRef} id="log-interaction" className="mb-4 p-3 rounded-lg border border-[oklch(0.84_0.018_75)] bg-[oklch(0.965_0.012_80)] space-y-2">
           <Textarea value={newNote} onChange={e => setNewNote(e.target.value)} placeholder="What happened? (e.g., Sent thank you note, had a call, mailed donor packet…)" rows={2} className="text-sm" autoFocus />
           <div className="flex gap-2 flex-wrap items-center">
             <div className="flex items-center gap-2">

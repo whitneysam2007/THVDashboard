@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { Donor, DonorStatus, TaskEntry, ActivityEntry } from "./types";
+import { Donor, DonorPortfolio, DonorStatus, TaskEntry, ActivityEntry } from "./types";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -141,6 +141,16 @@ export function expectedRecurringAnnualAmount(donors: Donor[]): number {
     if (donor.type !== 'recurring' || !donor.recurringAmount || !donor.recurringFrequency) return sum;
     return sum + (donor.recurringFrequency === 'monthly' ? donor.recurringAmount * 12 : donor.recurringAmount);
   }, 0);
+}
+
+/** Metrics for a single portfolio; donor records in other portfolios are excluded. */
+export function portfolioHeaderMetrics(donors: Donor[], portfolio: DonorPortfolio) {
+  const portfolioDonors = donors.filter(donor => donor.portfolio === portfolio);
+  return {
+    donorCount: portfolioDonors.length,
+    currentYearTotal: currentYearContributionTotal(portfolioDonors),
+    expectedRecurringAnnualAmount: expectedRecurringAnnualAmount(portfolioDonors),
+  };
 }
 
 // Donor Journey recurring-task colors. Same fig hue at two strengths: bright

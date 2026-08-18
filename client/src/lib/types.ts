@@ -85,6 +85,7 @@ export interface TripAttendee {
   purchasedTicket?: boolean;
   notes?: string;
   medicalProfile?: MedicalVolunteerProfile;
+  tripLogistics?: import('../../../shared/tripOperations').TripLogistics;
 }
 
 export interface MedicalVolunteerProfile {
@@ -100,6 +101,7 @@ export interface MedicalVolunteerProfile {
   thvAssignment?: string;
   assignmentStatus?: string;
   planningNotes?: string;
+  tripLogistics?: import('../../../shared/tripOperations').TripLogistics;
 }
 
 export interface Trip {
@@ -111,6 +113,7 @@ export interface Trip {
   donorAttendees: string[]; // donor IDs
   attendees?: TripAttendee[]; // non-donor trip participants
   notes?: string;
+  operations?: import('../../../shared/tripOperations').TripOperations;
 }
 
 export interface Initiative {
