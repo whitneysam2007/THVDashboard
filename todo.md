@@ -206,7 +206,13 @@
 - [x] Trip assignments: add activity group records with activity/date, group name, leader, all-going-member selection, and notes
 - [x] Trip lodging: add a simple room table with room number, capacity, and assigned people
 - [x] Trip leader checklist: add a placeholder marked Waiting for Amy’s template
-- [ ] Deployment: push the reviewed categorized expenses, Trip Assignments, and Team Travel Documents update to GitHub for Netlify deployment
+- [x] Deployment: push the reviewed categorized expenses, Trip Assignments, and Team Travel Documents update to GitHub for Netlify deployment
+- [x] Zeffy integration: assess secure, cost-effective automation for creating and routing donations into Major Donors, Donors 500–5K, and Monthly Giving
+- [x] Donor portfolios: sort Major Donors, Donors 500–5K, and Monthly Giving cards by highest relevant giving amount first
+- [x] Tasks reports: use current-year giving for each year’s semi-annual report and completed prior-year giving for tax receipts and annual reports
+- [x] Tasks reports: replace generic sent checkboxes with Thank You Tracker-style Not sent / Report sent on date states, batch dating, and sent-last sorting
+- [x] Tasks reports: omit a giving column from semi-annual and annual reports while retaining a completed-prior-year giving amount for tax receipts
+- [x] Tasks reports: ensure only the Tax Receipt grid includes a giving-dollar column
 - [x] Deployment: hold the combined GitHub push until the Docs from Guate Team and attendee reassignment work are complete and reviewed
 - [x] Trip attendees: add an expanded-card Go on a later trip control that asks which future trip and moves the existing attendee record without losing their information
 - [x] Deployment: pushed the approved lower-tier donor journey log to GitHub for Netlify deployment
@@ -255,3 +261,5 @@
 - [x] Trips: dates, team members, donor attendees, full attendee CRUD with skills/flags
 - [x] Initiatives: Gantt + card list, full CRUD
 - [x] Tasks page: all tasks across donors, grouped, collapsible, edit + delete + mark done UI
+- [x] Next major-donor priorities: prompt for and persist a chosen completion date when marking a task done
+- [ ] Deployment: push the reviewed donor report tracker and dated-priority completion revision to GitHub

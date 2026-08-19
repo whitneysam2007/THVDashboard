@@ -19,4 +19,11 @@ describe('nextOutstandingManualTask', () => {
       { id: 'newsletter', dueDate: '2026-01-01', completedDate: null },
     ])).toBeUndefined();
   });
+
+  it('treats an explicitly selected historical completion date as completed', () => {
+    const selectedCompletionDate = '2026-02-14';
+    expect(nextOutstandingManualTask([
+      { id: 'manual-done-on-selected-date', dueDate: '2026-02-01', completedDate: selectedCompletionDate },
+    ])).toBeUndefined();
+  });
 });

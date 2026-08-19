@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { REPORTS, reportYearGiving } from './reportRecipients';
 
 describe('report recipient helpers', () => {
-  it('uses prior-year giving for the 2026 semi-annual recipient grid', () => {
-    expect(REPORTS['semi-annual-2026']).toMatchObject({ amountYear: 2025, amountLabel: '2025 giving' });
+  it('uses current-year giving for the semi-annual report and tax-only amount display', () => {
+    const year = new Date().getFullYear();
+    expect(REPORTS['semi-annual']).toMatchObject({ givingYear: year, showGivingAmount: false });
+    expect(REPORTS['tax-receipt']).toMatchObject({ givingYear: year, showGivingAmount: true, amountLabel: `${year} giving` });
+    expect(REPORTS['annual-report']).toMatchObject({ givingYear: year, showGivingAmount: false });
   });
 
   it('sums only the requested calendar year', () => {

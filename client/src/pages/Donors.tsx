@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { useDashboard } from '@/contexts/DashboardContext';
 import {
-  computeDonorStatus, donorCardPriorityDate, formatDate, nextContactDate, daysUntilNextContact, sortDonorsByCardPriority,
+  computeDonorStatus, donorCardPriorityDate, formatDate, nextContactDate, daysUntilNextContact, sortDonorsByCardPriority, sortDonorsByPortfolioCardAmount,
   formatCurrency, totalDonated, expectedRecurringAnnualAmount, portfolioHeaderMetrics, tierLabel, cn
 } from '@/lib/utils';
 import { donorTypeLabel } from '@/lib/utils';
@@ -71,7 +71,7 @@ export default function Donors() {
   // each card, from earliest to latest, with no-date cards excluded by the filter.
   const displayedDonors = filterUpcoming
     ? sortDonorsByCardPriority(filtered)
-    : [...filtered].sort((a, b) => b._total - a._total);
+    : sortDonorsByPortfolioCardAmount(filtered, 'major');
 
   const currentYear = new Date().getFullYear();
   const { currentYearTotal, expectedRecurringAnnualAmount: recurringAnnualBase } = portfolioHeaderMetrics(allDonors, 'major');

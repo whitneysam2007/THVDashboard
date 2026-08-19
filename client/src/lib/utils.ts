@@ -153,6 +153,24 @@ export function portfolioHeaderMetrics(donors: Donor[], portfolio: DonorPortfoli
   };
 }
 
+/** The amount used to rank cards within each donor portfolio. */
+export function portfolioCardAmount(donor: Donor, portfolio: DonorPortfolio): number {
+  if (portfolio === 'monthly-giving') {
+    return donor.recurringFrequency === 'monthly'
+      ? (donor.recurringAmount ?? 0) * 12
+      : (donor.recurringAmount ?? 0);
+  }
+  return totalDonated(donor);
+}
+
+/** Highest-value portfolio cards first, with alphabetical tie-breaking. */
+export function sortDonorsByPortfolioCardAmount<T extends Donor>(donors: T[], portfolio: DonorPortfolio): T[] {
+  return [...donors].sort((a, b) => {
+    const amountDifference = portfolioCardAmount(b, portfolio) - portfolioCardAmount(a, portfolio);
+    return amountDifference || a.name.localeCompare(b.name);
+  });
+}
+
 // Donor Journey recurring-task colors. Same fig hue at two strengths: bright
 // means a task needs attention now; muted means future or completed.
 export const JOURNEY_FIG_BRIGHT = 'oklch(0.52 0.16 350)';

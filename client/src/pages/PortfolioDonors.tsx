@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useDashboard } from '@/contexts/DashboardContext';
 import { Donor, DonorPortfolio } from '@/lib/types';
 import { donorPortfolioLabel } from '@shared/donorPortfolios';
-import { formatCurrency, formatDate, portfolioHeaderMetrics, totalDonated } from '@/lib/utils';
+import { formatCurrency, formatDate, portfolioHeaderMetrics, sortDonorsByPortfolioCardAmount, totalDonated } from '@/lib/utils';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -206,7 +206,10 @@ export default function PortfolioDonors({ portfolio }: PortfolioDonorsProps) {
   const { store, isLoading } = useDashboard();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
-  const donors = useMemo(() => store.donors.filter(donor => donor.portfolio === portfolio), [store.donors, portfolio]);
+  const donors = useMemo(
+    () => sortDonorsByPortfolioCardAmount(store.donors.filter(donor => donor.portfolio === portfolio), portfolio),
+    [store.donors, portfolio]
+  );
   const selected = donors.find(donor => donor.id === selectedId) ?? null;
   const { currentYearTotal, expectedRecurringAnnualAmount: annualExpected } = portfolioHeaderMetrics(store.donors, portfolio);
   const title = donorPortfolioLabel(portfolio);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeDonorStatus, currentYearContributionTotal, donationsInCalendarYear, donorCardPriorityDate, expectedRecurringAnnualAmount, generateAutoTasks, JOURNEY_FIG_BRIGHT, JOURNEY_FIG_MUTED, portfolioHeaderMetrics, recurringJourneyColor, sortDonorsByCardPriority } from './utils';
+import { computeDonorStatus, currentYearContributionTotal, donationsInCalendarYear, donorCardPriorityDate, expectedRecurringAnnualAmount, generateAutoTasks, JOURNEY_FIG_BRIGHT, JOURNEY_FIG_MUTED, portfolioHeaderMetrics, recurringJourneyColor, sortDonorsByCardPriority, sortDonorsByPortfolioCardAmount } from './utils';
 import type { Donor } from './types';
 
 function donorStartingOn(startDate: string): Donor {
@@ -140,6 +140,37 @@ describe('portfolioHeaderMetrics', () => {
 
     expect(portfolioHeaderMetrics([major, monthly], 'major')).toEqual({ donorCount: 1, currentYearTotal: 10_000, expectedRecurringAnnualAmount: 2_000 });
     expect(portfolioHeaderMetrics([major, monthly], 'monthly-giving')).toEqual({ donorCount: 1, currentYearTotal: 1_200, expectedRecurringAnnualAmount: 1_200 });
+  });
+});
+
+describe('sortDonorsByPortfolioCardAmount', () => {
+  it('sorts major and 500–5K cards by recorded lifetime giving', () => {
+    const smaller = donorStartingOn('2025-01-01');
+    smaller.name = 'Smaller donor';
+    smaller.donations = [{ id: 'small', date: '2026-01-01', amount: 500 }];
+    const larger = donorStartingOn('2025-01-01');
+    larger.name = 'Larger donor';
+    larger.donations = [{ id: 'large', date: '2026-01-01', amount: 5_000 }];
+
+    expect(sortDonorsByPortfolioCardAmount([smaller, larger], 'major').map(donor => donor.name)).toEqual(['Larger donor', 'Smaller donor']);
+    expect(sortDonorsByPortfolioCardAmount([smaller, larger], 'donors-500-5k').map(donor => donor.name)).toEqual(['Larger donor', 'Smaller donor']);
+  });
+
+  it('sorts Monthly Giving cards by annualized monthly commitment', () => {
+    const lower = donorStartingOn('2025-01-01');
+    lower.name = 'Lower monthly';
+    lower.portfolio = 'monthly-giving';
+    lower.type = 'recurring';
+    lower.recurringAmount = 100;
+    lower.recurringFrequency = 'monthly';
+    const higher = donorStartingOn('2025-01-01');
+    higher.name = 'Higher monthly';
+    higher.portfolio = 'monthly-giving';
+    higher.type = 'recurring';
+    higher.recurringAmount = 500;
+    higher.recurringFrequency = 'monthly';
+
+    expect(sortDonorsByPortfolioCardAmount([lower, higher], 'monthly-giving').map(donor => donor.name)).toEqual(['Higher monthly', 'Lower monthly']);
   });
 });
 
