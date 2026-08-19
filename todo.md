@@ -262,4 +262,4 @@
 - [x] Initiatives: Gantt + card list, full CRUD
 - [x] Tasks page: all tasks across donors, grouped, collapsible, edit + delete + mark done UI
 - [x] Next major-donor priorities: prompt for and persist a chosen completion date when marking a task done
-- [ ] Deployment: push the reviewed donor report tracker and dated-priority completion revision to GitHub
+- [x] Deployment: push the reviewed donor report tracker and dated-priority completion revision to GitHub
