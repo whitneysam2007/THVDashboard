@@ -1,6 +1,11 @@
+export const TRIP_EXPENSE_CATEGORIES = ['Lodging', 'Supplies (pre-trip)', 'T-shirts', 'Food', 'Transportation', 'Program & Supplies', 'Garden Towers', 'Translation & Local Staff', 'Excursion', 'Other'] as const;
+export type TripExpenseCategory = (typeof TRIP_EXPENSE_CATEGORIES)[number];
+
 export type TripExpense = {
   id: string;
   description: string;
+  category?: TripExpenseCategory;
+  subcategory?: string;
   usdAmount?: number;
   quetzalAmount?: number;
   paymentOwner?: string;
@@ -42,6 +47,24 @@ export type TripItineraryDay = {
   activities: TripItineraryActivity[];
 };
 
+export type TripActivityGroup = {
+  id: string;
+  activityName: string;
+  date: string;
+  groupName: string;
+  leader: string;
+  members: string[];
+  notes?: string;
+};
+
+export type TripLodgingAssignment = {
+  id: string;
+  roomNumber: string;
+  capacity?: number;
+  members: string[];
+  notes?: string;
+};
+
 export type TripGuateTeamDocument = {
   id: string;
   name: string;
@@ -58,6 +81,8 @@ export type TripOperations = {
   leaderLogistics?: Record<string, { purchasedTicket?: boolean; flight?: TripFlightDetails }>;
   planningTasks?: TripPlanningTask[];
   itineraryDays?: TripItineraryDay[];
+  activityGroups?: TripActivityGroup[];
+  lodgingAssignments?: TripLodgingAssignment[];
   guateTeamDocuments?: TripGuateTeamDocument[];
   gardenTowers?: number;
   gardenTowerFundsUsd?: number;

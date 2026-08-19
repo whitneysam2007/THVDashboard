@@ -196,7 +196,17 @@
 - [x] Deployment: push the verified report-giving and USANA receipt updates to GitHub for Netlify deployment
 - [x] Trips Docs from Guate Team: add an internal THV-only per-trip upload library for Guatemala team materials with open/download access
 - [x] Trips Docs from Guate Team: store document metadata with the trip and support Garden Tower, family-market, home-visit, and other reference files without external sharing
-- [ ] Deployment: push the completed Docs from Guate Team workspace update to GitHub for Netlify deployment
+- [x] Deployment: push the completed Docs from Guate Team workspace update to GitHub for Netlify deployment
+- [x] Trip expenses: add an optional structured expense category and subcategory system informed by Amy’s last-trip categories
+- [x] Garden Towers: evaluate a dedicated expense view or category treatment for Garden Tower, translator, and related costs
+- [x] Trip assignments: add lodging, Garden Tower, food-delivery, and leader-checklist planning support
+- [x] Trip itinerary: use dedicated activity-group records for activities requiring leads and teams, without duplicating every itinerary item
+- [x] Reports & Resources: add the approved Google Drive Team Travel Documents folder for vaccines, waivers, packing lists, and other standard travel documents
+- [x] Trip expenses: add category and optional subcategory fields with Food, Lodging, Transportation, Program & Supplies, Garden Towers, Translation & Local Staff, Excursion, Other, and grouped subtotals
+- [x] Trip assignments: add activity group records with activity/date, group name, leader, all-going-member selection, and notes
+- [x] Trip lodging: add a simple room table with room number, capacity, and assigned people
+- [x] Trip leader checklist: add a placeholder marked Waiting for Amy’s template
+- [ ] Deployment: push the reviewed categorized expenses, Trip Assignments, and Team Travel Documents update to GitHub for Netlify deployment
 - [x] Deployment: hold the combined GitHub push until the Docs from Guate Team and attendee reassignment work are complete and reviewed
 - [x] Trip attendees: add an expanded-card Go on a later trip control that asks which future trip and moves the existing attendee record without losing their information
 - [x] Deployment: pushed the approved lower-tier donor journey log to GitHub for Netlify deployment

@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ExpenseWorkspace } from '@/components/ExpenseWorkspace';
 import { TripItinerary } from '@/components/TripItinerary';
+import { TripAssignments } from '@/components/TripAssignments';
 import { Plus, Plane, Calendar, Users, X, Edit2, Check, Trash2, Mail, Phone, ChevronDown, ChevronUp } from 'lucide-react';
 import { nanoid } from 'nanoid';
 import { jsPDF } from 'jspdf';
@@ -659,7 +660,7 @@ function TripCard({ trip, onEdit, onDelete, isEditing, workspaceOpen, onToggleWo
 
 function TripWorkspace({ trip, onSave }: { trip: Trip; onSave: (operations: TripOperations) => void }) {
   const { store } = useDashboard();
-  const [tab, setTab] = useState<'attendees' | 'expenses' | 'tasks' | 'itinerary' | 'docs' | 'flights'>('attendees');
+  const [tab, setTab] = useState<'attendees' | 'expenses' | 'tasks' | 'itinerary' | 'assignments' | 'docs' | 'flights'>('attendees');
   const [expense, setExpense] = useState<Partial<TripExpense>>({});
   const [task, setTask] = useState<Partial<TripPlanningTask>>({});
   const utils = trpc.useUtils();
@@ -685,7 +686,7 @@ function TripWorkspace({ trip, onSave }: { trip: Trip; onSave: (operations: Trip
   };
   const addExpense = () => {
     if (!expense.description?.trim()) return;
-    saveOps({ expenses: [...expenses, { id: nanoid(), description: expense.description.trim(), usdAmount: Number(expense.usdAmount) || undefined, quetzalAmount: Number(expense.quetzalAmount) || undefined, paymentOwner: expense.paymentOwner, receiptLink: expense.receiptLink, notes: expense.notes }] });
+    saveOps({ expenses: [...expenses, { id: nanoid(), description: expense.description.trim(), category: expense.category, subcategory: expense.subcategory, usdAmount: Number(expense.usdAmount) || undefined, quetzalAmount: Number(expense.quetzalAmount) || undefined, paymentOwner: expense.paymentOwner, receiptLink: expense.receiptLink, notes: expense.notes }] });
     setExpense({});
   };
   const addTask = () => {
@@ -695,13 +696,15 @@ function TripWorkspace({ trip, onSave }: { trip: Trip; onSave: (operations: Trip
   };
   const patchTask = (id: string, patch: Partial<TripPlanningTask>) => saveOps({ planningTasks: tasks.map(t => t.id === id ? { ...t, ...patch } : t) });
   const deleteTask = (id: string) => saveOps({ planningTasks: tasks.filter(taskItem => taskItem.id !== id) });
-  const tabs = [['attendees', 'Attendees'], ['expenses', 'Trip expenses'], ['tasks', 'Trip to-do list'], ['itinerary', 'Trip itinerary'], ['docs', 'Docs from Guate Team'], ['flights', 'Flight compilation']] as const;
+  const assignmentPeople = Array.from(new Set([...leaders.map(leader => leader.name), ...going.map(attendee => attendee.name)])).sort((first, second) => first.localeCompare(second));
+  const tabs = [['attendees', 'Attendees'], ['expenses', 'Trip expenses'], ['tasks', 'Trip to-do list'], ['itinerary', 'Trip itinerary'], ['assignments', 'Assignments'], ['docs', 'Docs from Guate Team'], ['flights', 'Flight compilation']] as const;
   return <div className="mt-5 border-t border-[oklch(0.84_0.018_75)] pt-4">
     <div className="flex gap-1 overflow-x-auto pb-2">{tabs.map(([key, label]) => <button key={key} onClick={() => setTab(key)} className={`whitespace-nowrap rounded-full px-3 py-1 text-xs ${tab === key ? 'bg-[oklch(0.22_0.018_55)] text-white' : 'bg-[oklch(0.93_0.015_78)] text-[oklch(0.42_0.018_55)]'}`}>{label}</button>)}</div>
     {tab === 'attendees' && <AttendeeSection trip={trip} onSaveOperations={saveOps} />}
     {tab === 'expenses' && <ExpenseWorkspace expenses={expenses} ops={ops} expense={expense} setExpense={setExpense} onAdd={addExpense} onSave={saveOps}/>} 
     {tab === 'tasks' && <TripTodoListWithEntry tasks={tasks} draft={task} onDraftChange={setTask} onAdd={addTask} onPatch={patchTask} onDelete={deleteTask} />}
     {tab === 'itinerary' && <TripItinerary trip={trip} operations={ops} templateTrips={store.trips} onSave={saveOps} />}
+    {tab === 'assignments' && <TripAssignments goingPeople={assignmentPeople} operations={ops} onSave={saveOps} />}
     {tab === 'docs' && <GuateTeamDocuments trip={trip} operations={ops} onSave={saveOps} />}
     {tab === 'flights' && <div className="space-y-3 pt-3"><p className="text-xs text-[oklch(0.52_0.022_65)]">Flight compilation for all leaders and volunteers who are going. Changes save when you leave a field. Include two checked bags for THV supplies where needed.</p>{leaders.map(leader => <div key={`leader-flight-${leader.name}`} className="rounded-lg border border-[oklch(0.87_0.018_75)] bg-white p-3"><p className="mb-2 text-sm font-medium">{leader.name} <span className="ml-1 text-xs font-normal text-[oklch(0.48_0.04_315)]">Leader</span></p><div className="grid grid-cols-2 gap-2">{[['airline','Airline'],['flightNumber','Flight number'],['departureAirport','Departure airport'],['arrivalAirport','Arrival airport'],['departureDateTime','Departure date/time'],['returnDateTime','Return date/time'],['bookingReference','Booking reference'],['seatNotes','Seat notes'],['baggageNotes','Baggage / 2-bag notes']].map(([field, label]) => <Input key={`${leader.name}-${field}-${(ops.leaderLogistics?.[leader.name]?.flight as any)?.[field] ?? ''}`} placeholder={label} defaultValue={(ops.leaderLogistics?.[leader.name]?.flight as any)?.[field] ?? ''} onBlur={e => saveOps({ leaderLogistics: { ...ops.leaderLogistics, [leader.name]: { ...ops.leaderLogistics?.[leader.name], flight: { ...ops.leaderLogistics?.[leader.name]?.flight, [field]: e.target.value } } } })}/>)}</div></div>)}{going.map(a => <div key={a.id} className="rounded-lg border border-[oklch(0.87_0.018_75)] bg-white p-3"><p className="mb-2 text-sm font-medium">{a.name}</p><div className="grid grid-cols-2 gap-2">{[['airline','Airline'],['flightNumber','Flight number'],['departureAirport','Departure airport'],['arrivalAirport','Arrival airport'],['departureDateTime','Departure date/time'],['returnDateTime','Return date/time'],['bookingReference','Booking reference'],['seatNotes','Seat notes'],['baggageNotes','Baggage / 2-bag notes']].map(([field, label]) => <Input key={`${a.id}-${field}-${(a.tripLogistics?.flight as any)?.[field] ?? ''}`} placeholder={label} defaultValue={(a.tripLogistics?.flight as any)?.[field] ?? ''} onBlur={e => void updateFlight(a, field, e.target.value)}/>)}</div></div>)}<div className="flex justify-end border-t border-[oklch(0.90_0.012_76)] pt-4"><Button size="sm" onClick={() => downloadFlightCompilationPdf(trip, flightTravelers)}>Download PDF</Button></div></div>}
   </div>;

@@ -20,4 +20,16 @@ describe('summarizeTripExpenses', () => {
     expect(summary.combinedUsd).toBe(100);
     expect(summary.perPersonUsd).toBeNull();
   });
+
+  it('groups USD and quetzal expenses into category subtotals', () => {
+    const summary = summarizeTripExpenses([
+      { id: 'lodging', description: 'Hotel', category: 'Lodging', usdAmount: 150 },
+      { id: 'food', description: 'Senahú food', category: 'Food', quetzalAmount: 741 },
+      { id: 'more-food', description: 'Travel snacks', category: 'Food', usdAmount: 25 },
+    ], {});
+    expect(summary.categoryTotals).toEqual([
+      expect.objectContaining({ category: 'Lodging', combinedUsd: 150 }),
+      expect.objectContaining({ category: 'Food', combinedUsd: 125, quetzalPurchases: 741 }),
+    ]);
+  });
 });

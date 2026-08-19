@@ -6,6 +6,7 @@ const RESOURCES = [
   { title: 'Narú Circle', href: 'https://drive.google.com/file/d/1PHjwmG1cxPbva7uj8D-_Ej7WkJK0_RfJ/view?usp=drive_link' },
   { title: '2025 Annual Impact Report', href: 'https://drive.google.com/file/d/1n1SiG0RByyZp2eZeb5Kk89TAieQjlyjq/view?usp=drive_link' },
   { title: 'Village Meeting Survey', href: 'https://drive.google.com/file/d/1Yixj_vM7UNoYgD_l7M922aALD7Q9UEU7/view?usp=drive_link' },
+  { title: 'Team Travel Documents', href: 'https://drive.google.com/drive/folders/1z4es5gOusxQxLaIHEW60aWJaxnZWczIM?usp=drive_link', folder: true },
   { title: 'Tri-Fold Brochure', href: 'https://drive.google.com/drive/folders/1RL3hKQelJdh2fdRKhrUE48JOvOX29NHn?usp=drive_link', folder: true },
 ];
 

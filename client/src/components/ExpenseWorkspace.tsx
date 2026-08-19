@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input';
 import { SENUHU_BANK_RATE_GTQ_PER_USD, summarizeTripExpenses } from '@/lib/tripExpenses';
 import { Pencil, Plus, Save, Trash2, X } from 'lucide-react';
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
-import type { TripExpense, TripOperations } from '../../../shared/tripOperations';
+import { TRIP_EXPENSE_CATEGORIES, type TripExpense, type TripOperations } from '../../../shared/tripOperations';
 
 const money = (amount: number) => amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 const optionalNumber = (value: string) => value === '' ? undefined : Number(value);
@@ -11,6 +11,8 @@ const optionalNumber = (value: string) => value === '' ? undefined : Number(valu
 function ExpenseFields({ draft, onChange }: { draft: Partial<TripExpense>; onChange: (updates: Partial<TripExpense>) => void }) {
   return <div className="grid grid-cols-2 gap-2">
     <Input placeholder="Description" value={draft.description ?? ''} onChange={event => onChange({ description: event.target.value })} />
+    <select aria-label="Expense category" value={draft.category ?? ''} onChange={event => onChange({ category: event.target.value as TripExpense['category'] || undefined })} className="h-9 rounded border border-[oklch(0.80_0.018_75)] bg-white px-2 text-sm"><option value="">Select category</option>{TRIP_EXPENSE_CATEGORIES.map(category => <option key={category} value={category}>{category}</option>)}</select>
+    <Input placeholder="Subcategory (optional)" value={draft.subcategory ?? ''} onChange={event => onChange({ subcategory: event.target.value || undefined })} />
     <Input placeholder="Amount USD" type="number" value={draft.usdAmount ?? ''} onChange={event => onChange({ usdAmount: optionalNumber(event.target.value) })} />
     <Input placeholder="Amount quetzales" type="number" value={draft.quetzalAmount ?? ''} onChange={event => onChange({ quetzalAmount: optionalNumber(event.target.value) })} />
     <Input placeholder="Card / reimbursement owner" value={draft.paymentOwner ?? ''} onChange={event => onChange({ paymentOwner: event.target.value })} />
@@ -46,18 +48,19 @@ export function ExpenseWorkspace({ expenses, ops, expense, setExpense, onAdd, on
   return <div className="space-y-3 pt-3">
     <div className="overflow-x-auto">
       <table className="w-full min-w-[740px] text-xs">
-        <thead><tr className="text-left text-[oklch(0.52_0.022_65)]"><th>Description</th><th>USD</th><th>Quetzales</th><th>Card / reimbursement owner</th><th>Receipt link</th><th className="text-right">Actions</th></tr></thead>
+        <thead><tr className="text-left text-[oklch(0.52_0.022_65)]"><th>Description</th><th>Category</th><th>USD</th><th>Quetzales</th><th>Card / reimbursement owner</th><th>Receipt link</th><th className="text-right">Actions</th></tr></thead>
         <tbody>
           {expenses.map(item => <>
             <tr key={item.id} className="border-t border-[oklch(0.9_0.012_78)]">
               <td className="py-2">{item.description}</td>
+              <td>{item.category ?? 'Uncategorized'}{item.subcategory ? <span className="block text-[10px] text-[oklch(0.52_0.022_65)]">{item.subcategory}</span> : null}</td>
               <td>{item.usdAmount !== undefined ? money(item.usdAmount) : '—'}</td>
               <td>{item.quetzalAmount !== undefined ? `Q ${item.quetzalAmount.toLocaleString()}` : '—'}</td>
               <td>{item.paymentOwner ?? '—'}</td>
               <td>{item.receiptLink ? <a className="text-[oklch(0.48_0.16_250)]" href={item.receiptLink} target="_blank" rel="noreferrer">View receipt</a> : '—'}</td>
               <td className="py-1 text-right"><button aria-label={`Edit ${item.description}`} className="mr-1 rounded p-1 hover:bg-[oklch(0.94_0.02_250)]" onClick={() => setEditingExpense({ ...item })}><Pencil size={13} className="text-[oklch(0.42_0.15_250)]" /></button><button aria-label={`Delete ${item.description}`} className="rounded p-1 hover:bg-red-50" onClick={() => setDeleteCandidate(item)}><Trash2 size={13} className="text-[oklch(0.55_0.20_27)]" /></button></td>
             </tr>
-            {editingExpense?.id === item.id && <tr className="border-t border-[oklch(0.88_0.04_250)] bg-[oklch(0.98_0.012_250)]"><td colSpan={6} className="p-3"><p className="mb-2 text-xs font-medium text-[oklch(0.42_0.15_250)]">Edit expense</p><ExpenseFields draft={editingExpense} onChange={updates => setEditingExpense(current => current ? { ...current, ...updates } : current)} /><div className="mt-3 flex gap-2"><Button size="sm" onClick={saveEdit}><Save size={13} className="mr-1" /> Save changes</Button><Button size="sm" variant="outline" onClick={() => setEditingExpense(null)}><X size={13} className="mr-1" /> Cancel</Button></div></td></tr>}
+            {editingExpense?.id === item.id && <tr className="border-t border-[oklch(0.88_0.04_250)] bg-[oklch(0.98_0.012_250)]"><td colSpan={7} className="p-3"><p className="mb-2 text-xs font-medium text-[oklch(0.42_0.15_250)]">Edit expense</p><ExpenseFields draft={editingExpense} onChange={updates => setEditingExpense(current => current ? { ...current, ...updates } : current)} /><div className="mt-3 flex gap-2"><Button size="sm" onClick={saveEdit}><Save size={13} className="mr-1" /> Save changes</Button><Button size="sm" variant="outline" onClick={() => setEditingExpense(null)}><X size={13} className="mr-1" /> Cancel</Button></div></td></tr>}
           </>)}
         </tbody>
       </table>
@@ -67,6 +70,8 @@ export function ExpenseWorkspace({ expenses, ops, expense, setExpense, onAdd, on
 
     <Button size="sm" onClick={() => setShowAdd(value => !value)}><Plus size={14} className="mr-1" /> Add expense</Button>
     {showAdd && <div className="rounded-lg border border-[oklch(0.84_0.018_75)] bg-[oklch(0.985_0.008_80)] p-3"><ExpenseFields draft={expense} onChange={updates => setExpense(current => ({ ...current, ...updates }))} /><div className="mt-3 flex gap-2"><Button size="sm" onClick={addAndClose}>Save expense</Button><Button size="sm" variant="outline" onClick={() => setShowAdd(false)}>Cancel</Button></div></div>}
+
+    {summary.categoryTotals.length > 0 && <div className="rounded-lg border border-[oklch(0.84_0.018_75)] bg-white p-3"><p className="text-xs font-medium uppercase tracking-[0.12em] text-[oklch(0.52_0.022_65)]">Expense totals by category</p><div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{summary.categoryTotals.map(total => <div key={total.category} className="rounded-md bg-[oklch(0.975_0.012_80)] px-3 py-2"><p className="text-xs text-[oklch(0.42_0.018_55)]">{total.category}</p><p className="font-display text-lg">{money(total.combinedUsd)}</p><p className="text-[10px] text-[oklch(0.52_0.022_65)]">{money(total.usdPurchases)} + Q {total.quetzalPurchases.toLocaleString()}</p></div>)}</div></div>}
 
     <div className="grid gap-3 rounded-lg border border-[oklch(0.84_0.018_75)] bg-[oklch(0.975_0.012_80)] p-4 sm:grid-cols-2 lg:grid-cols-4">
       <div><p className="text-xs text-[oklch(0.52_0.022_65)]">Total USD purchases</p><p className="font-display text-xl">{money(usdTotal)}</p></div>
