@@ -5,10 +5,10 @@ import type { TripOperations } from '../shared/tripOperations';
 export const USANA_BUCKET = 'thv-dashboard-private';
 export const USANA_PROJECT_KEY = 'usana/usana-garden-tower-project.json';
 const MAX_PDF_BYTES = 10 * 1024 * 1024;
-const MAX_GUATE_TEAM_DOCUMENT_BYTES = 15 * 1024 * 1024;
-const ALLOWED_DOCUMENT_MIME_TYPES = new Set([
+export const MAX_PRIVATE_DOCUMENT_BYTES = 15 * 1024 * 1024;
+export const ALLOWED_DOCUMENT_MIME_TYPES = new Set([
   'application/pdf', 'application/json', 'text/plain', 'text/csv',
-  'image/jpeg', 'image/png',
+  'image/jpeg', 'image/png', 'image/webp', 'image/heic',
   'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 ]);
@@ -27,13 +27,13 @@ export function safePdfName(fileName: string) {
   return cleaned.endsWith('.pdf') ? cleaned : `${cleaned || 'garden-tower-document'}.pdf`;
 }
 
-async function ensureUsanaBucket() {
+export async function ensureUsanaBucket() {
   const storage = getSupabaseServerClient().storage;
   const { error: lookupError } = await storage.getBucket(USANA_BUCKET);
   if (!lookupError) {
     const { error } = await storage.updateBucket(USANA_BUCKET, {
       public: false,
-      fileSizeLimit: MAX_GUATE_TEAM_DOCUMENT_BYTES,
+      fileSizeLimit: MAX_PRIVATE_DOCUMENT_BYTES,
       allowedMimeTypes: Array.from(ALLOWED_DOCUMENT_MIME_TYPES),
     });
     if (error) throw new Error(error.message);
@@ -41,7 +41,7 @@ async function ensureUsanaBucket() {
   }
   const { error } = await storage.createBucket(USANA_BUCKET, {
     public: false,
-    fileSizeLimit: MAX_GUATE_TEAM_DOCUMENT_BYTES,
+    fileSizeLimit: MAX_PRIVATE_DOCUMENT_BYTES,
     allowedMimeTypes: Array.from(ALLOWED_DOCUMENT_MIME_TYPES),
   });
   if (error && !/already exists/i.test(error.message)) throw new Error(error.message);
@@ -85,7 +85,7 @@ export async function uploadGardenTowerPdf(tripId: string, fileName: string, byt
 export async function getGardenTowerPdfDownloadUrl(key: string) {
   if (!key.startsWith('usana/garden-tower/')) throw new Error('Invalid Garden Tower document key.');
   await ensureUsanaBucket();
-  const { data, error } = await getSupabaseServerClient().storage.from(USANA_BUCKET).createSignedUrl(key, 60 * 60);
+  const { data, error } = await getSupabaseServerClient().storage.from(USANA_BUCKET).createSignedUrl(key, 60 * 60, { download: true });
   if (error || !data?.signedUrl) throw new Error(error?.message ?? 'Could not create a document download link.');
   return data.signedUrl;
 }
@@ -95,7 +95,7 @@ export function safeDocumentName(fileName: string) {
 }
 
 export async function uploadGuateTeamDocument(tripId: string, fileName: string, bytes: Buffer, mimeType: string) {
-  if (bytes.byteLength > MAX_GUATE_TEAM_DOCUMENT_BYTES) throw new Error('Please upload a file smaller than 15 MB.');
+  if (bytes.byteLength > MAX_PRIVATE_DOCUMENT_BYTES) throw new Error('Please upload a file smaller than 15 MB.');
   if (!ALLOWED_DOCUMENT_MIME_TYPES.has(mimeType)) throw new Error('This file type is not supported. Upload a PDF, image, Word document, spreadsheet, text, or CSV file.');
   await ensureUsanaBucket();
   const path = `trips/guate-team/${tripId}/${nanoid()}-${safeDocumentName(fileName)}`;
@@ -107,7 +107,25 @@ export async function uploadGuateTeamDocument(tripId: string, fileName: string, 
 export async function getGuateTeamDocumentDownloadUrl(key: string) {
   if (!key.startsWith('trips/guate-team/')) throw new Error('Invalid Guatemala team document key.');
   await ensureUsanaBucket();
-  const { data, error } = await getSupabaseServerClient().storage.from(USANA_BUCKET).createSignedUrl(key, 60 * 60);
+  const { data, error } = await getSupabaseServerClient().storage.from(USANA_BUCKET).createSignedUrl(key, 60 * 60, { download: true });
   if (error || !data?.signedUrl) throw new Error(error?.message ?? 'Could not create a document download link.');
+  return data.signedUrl;
+}
+
+export async function uploadTripExpenseReceipt(tripId: string, expenseId: string, fileName: string, bytes: Buffer, mimeType: string) {
+  if (bytes.byteLength > MAX_PRIVATE_DOCUMENT_BYTES) throw new Error('Please upload a receipt smaller than 15 MB.');
+  if (!ALLOWED_DOCUMENT_MIME_TYPES.has(mimeType)) throw new Error('This receipt type is not supported. Upload an image, PDF, Word document, spreadsheet, text, or CSV file.');
+  await ensureUsanaBucket();
+  const path = `trips/expense-receipts/${tripId}/${expenseId}/${nanoid()}-${safeDocumentName(fileName)}`;
+  const { error } = await getSupabaseServerClient().storage.from(USANA_BUCKET).upload(path, bytes, { contentType: mimeType, upsert: false });
+  if (error) throw new Error(error.message);
+  return { key: path };
+}
+
+export async function getTripExpenseReceiptDownloadUrl(key: string) {
+  if (!key.startsWith('trips/expense-receipts/')) throw new Error('Invalid trip expense receipt key.');
+  await ensureUsanaBucket();
+  const { data, error } = await getSupabaseServerClient().storage.from(USANA_BUCKET).createSignedUrl(key, 60 * 60, { download: true });
+  if (error || !data?.signedUrl) throw new Error(error?.message ?? 'Could not create a receipt download link.');
   return data.signedUrl;
 }

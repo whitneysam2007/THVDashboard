@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultUsanaProject, getGardenTowerPdfDownloadUrl, getGuateTeamDocumentDownloadUrl, safeDocumentName, safePdfName } from './usanaStorage';
+import { defaultUsanaProject, getGardenTowerPdfDownloadUrl, getGuateTeamDocumentDownloadUrl, getTripExpenseReceiptDownloadUrl, safeDocumentName, safePdfName } from './usanaStorage';
 
 describe('USANA project storage helpers', () => {
   it('starts the global project record with the approved USANA contact', () => {
@@ -23,5 +23,9 @@ describe('USANA project storage helpers', () => {
   it('normalizes Guatemala team document names and rejects keys outside their trip scope', async () => {
     expect(safeDocumentName('../../Family Market List May 2027.xlsx')).toBe('..-..-family-market-list-may-2027.xlsx');
     await expect(getGuateTeamDocumentDownloadUrl('usana/garden-tower/example.pdf')).rejects.toThrow('Invalid Guatemala team document key.');
+  });
+
+  it('rejects receipt keys outside the private per-expense storage path', async () => {
+    await expect(getTripExpenseReceiptDownloadUrl('trips/guate-team/example.docx')).rejects.toThrow('Invalid trip expense receipt key.');
   });
 });

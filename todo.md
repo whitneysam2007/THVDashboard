@@ -262,4 +262,24 @@
 - [x] Initiatives: Gantt + card list, full CRUD
 - [x] Tasks page: all tasks across donors, grouped, collapsible, edit + delete + mark done UI
 - [x] Next major-donor priorities: prompt for and persist a chosen completion date when marking a task done
-- [x] Deployment: push the reviewed donor report tracker and dated-priority completion revision to GitHub
+- [x] USANA Garden Tower: remove the Guatemala GT assignments PDF upload control and clarify that total completed towers is derived from the per-trip plans below
+- [x] USANA Garden Tower: use the approved individual-V2V-trips wording below the total Garden Towers number
+- [x] Trip to-do list: add Amy’s reusable Expedition To-Do template with every parent task and visually linked, separately assignable subtask
+- [x] Trip to-do list: remove the introductory Amy-template instruction header while retaining the template action
+- [x] Trip workspace: rename Docs from Guate Team to Trip Docs
+- [x] Trip Docs: verify stored Office files are valid uploads and fix their action to reliably download instead of opening unreadably in-browser
+- [x] Reports & Resources: allow approved users to upload and browse shared files under Reports, Resources, Trips, and USANA Garden Towers categories
+- [x] Reports & Resources: place Village to Village Expedition Information in the Trips section
+- [x] Reports & Resources: remove the Team Travel Documents Google Drive link in favor of direct dashboard uploads
+- [x] Trip attendee tags: rename Translator to Q’eqchi and Teaching to Teacher
+- [x] Going attendees: use the same compact pencil edit and trash delete controls as Potential/Confirmed attendee cards, with confirmation before deletion
+- [x] Trip expenses: attach receipt photos or files from a phone camera or file chooser, retaining them privately with each expense
+- [x] Document workflow: retain individual Google Drive links for report-level materials, support direct dashboard uploads for smaller team files, and add Trip Docs guidance for trip-specific documents
+- [x] Reports & Resources: show individual documents directly and remove the Team Travel Documents folder link while retaining the approved Tri-Fold folder link
+- [x] USANA Garden Towers resources: copy Amy’s six existing Garden Tower Trip Docs into the shared resource category while preserving original trip-level records
+- [x] USANA Garden Towers resources: convert Amy’s Word and Excel files to readable PDFs while retaining original private files
+- [x] Medical Volunteers: add an independent global collaborative to-do list with Emily as the default assignee, named-team ownership, due-date ordering, and completed-task controls
+- [x] Reports & Resources: allow approved users to edit the category of any Google-link or directly uploaded entry
+- [x] Trip Docs: allow approved users to delete any listed file after confirmation
+- [x] Trip Docs: display the deletion confirmation directly below the selected file row
+- [x] Deployment: push the reviewed medical tasks, resource editing, Trip Docs controls, and inline confirmation refinement to GitHub

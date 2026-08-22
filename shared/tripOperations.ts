@@ -10,6 +10,12 @@ export type TripExpense = {
   quetzalAmount?: number;
   paymentOwner?: string;
   receiptLink?: string;
+  receiptDocument?: {
+    name: string;
+    key: string;
+    mimeType?: string;
+    uploadedAt: string;
+  };
   notes?: string;
 };
 
@@ -21,6 +27,8 @@ export type TripPlanningTask = {
   completed?: boolean;
   notes?: string;
   position: number;
+  parentTaskId?: string;
+  templateKey?: string;
 };
 
 export type TripFlightDetails = {

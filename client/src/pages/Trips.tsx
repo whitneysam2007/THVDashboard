@@ -15,17 +15,22 @@ import { Textarea } from '@/components/ui/textarea';
 import { ExpenseWorkspace } from '@/components/ExpenseWorkspace';
 import { TripItinerary } from '@/components/TripItinerary';
 import { TripAssignments } from '@/components/TripAssignments';
+import { TripTodoTemplateList } from '@/components/TripTodoTemplateList';
 import { Plus, Plane, Calendar, Users, X, Edit2, Check, Trash2, Mail, Phone, ChevronDown, ChevronUp } from 'lucide-react';
 import { nanoid } from 'nanoid';
 import { jsPDF } from 'jspdf';
 import type { TripExpense, TripFlightDetails, TripGuateTeamDocument, TripOperations, TripPlanningTask } from '../../../shared/tripOperations';
+import { buildExpeditionTodoTemplateTasks, hasExpeditionTodoTemplate } from '../../../shared/expeditionTodoTemplate';
 
-const SKILLS = ['Medical', 'Nurse', 'Doctor', 'OB', 'Radiology', 'Teaching', 'Translation', 'Photography', 'Volunteer'];
+const SKILLS = ['Medical', 'Nurse', 'Doctor', 'OB', 'Radiology', 'Teacher', "Q'eqchi", 'Photography', 'Volunteer'];
 const TEAM_MEMBERS = ['Liz', 'Lauren', 'Anna', 'Brenley', 'Emily', 'Amy', 'Kirsten'];
 const TASK_ASSIGNEES = [...TEAM_MEMBERS, 'Yvonne/Nieve'];
 const CLINICAL_TAGS = new Set(['Medical', 'Nurse', 'Doctor', 'OB', 'Radiology']);
+const normalizeSkill = (skill: string) => skill === 'Translation' || skill === 'Translator' ? "Q'eqchi" : skill === 'Teaching' ? 'Teacher' : skill;
+const normalizeSkills = (skills: string[]) => Array.from(new Set(skills.map(normalizeSkill)));
 
-function RosterTag({ label }: { label: string }) {
+function RosterTag({ label: rawLabel }: { label: string }) {
+  const label = normalizeSkill(rawLabel);
   const classes = label === 'Leader'
     ? 'bg-[oklch(0.90_0.035_315)] text-[oklch(0.36_0.12_315)]'
     : label === 'Spanish' || label === 'SPANISH' || label === 'ES'
@@ -72,6 +77,7 @@ function GuateTeamDocuments({ trip, operations, onSave }: { trip: Trip; operatio
   const [category, setCategory] = useState<TripGuateTeamDocument['category']>('Other');
   const [file, setFile] = useState<File | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [deleteCandidate, setDeleteCandidate] = useState<TripGuateTeamDocument | null>(null);
   const upload = trpc.trips.uploadGuateTeamDocument.useMutation();
   const getDownloadUrl = trpc.trips.getGuateTeamDocumentUrl.useMutation();
   const documents = operations.guateTeamDocuments ?? [];
@@ -90,16 +96,35 @@ function GuateTeamDocuments({ trip, operations, onSave }: { trip: Trip; operatio
     }
   };
 
-  const openDocument = async (document: TripGuateTeamDocument) => {
+  const downloadDocument = async (document: TripGuateTeamDocument) => {
     try {
       const url = await getDownloadUrl.mutateAsync({ key: document.key });
-      window.open(url, '_blank', 'noopener,noreferrer');
+      const anchor = window.document.createElement('a');
+      anchor.href = url;
+      anchor.download = document.name;
+      window.document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Could not open that document.');
+      setMessage(error instanceof Error ? error.message : 'Could not download that document.');
     }
   };
+  const removeDocument = () => {
+    if (!deleteCandidate) return;
+    onSave({ guateTeamDocuments: documents.filter(document => document.id !== deleteCandidate.id) });
+    setMessage(`${deleteCandidate.name} removed from this trip.`);
+    setDeleteCandidate(null);
+  };
 
-  return <div className="space-y-4 pt-3"><div className="rounded-lg border border-[oklch(0.84_0.018_75)] bg-[oklch(0.975_0.012_80)] p-4"><p className="font-medium text-sm text-[oklch(0.22_0.018_55)]">Add a Guatemala team document</p><p className="mt-1 text-xs text-[oklch(0.52_0.022_65)]">Upload Garden Tower plans, family-market lists, home-visit materials, and other local team references.</p><div className="mt-3 grid gap-2 sm:grid-cols-[180px_1fr_auto]"><select aria-label="Document category" value={category} onChange={event => setCategory(event.target.value as TripGuateTeamDocument['category'])} className="h-9 rounded border border-[oklch(0.80_0.018_75)] bg-white px-2 text-sm">{GUATE_DOCUMENT_CATEGORIES.map(option => <option key={option} value={option}>{option}</option>)}</select><Input aria-label="Choose Guatemala team document" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png" onChange={event => setFile(event.target.files?.[0] ?? null)} /><Button size="sm" disabled={!file || upload.isPending} onClick={() => void uploadSelected()}>{upload.isPending ? 'Uploading…' : 'Upload file'}</Button></div>{message && <p className="mt-2 text-xs text-[oklch(0.42_0.018_55)]">{message}</p>}</div>{documents.length ? <div className="space-y-2">{documents.map(document => <div key={document.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[oklch(0.88_0.018_75)] bg-white p-3"><div><p className="text-sm font-medium text-[oklch(0.22_0.018_55)]">{document.name}</p><p className="mt-0.5 text-xs text-[oklch(0.52_0.022_65)]">{document.category} · Uploaded {formatDate(document.uploadedAt.slice(0, 10))}</p></div><Button size="sm" variant="outline" disabled={getDownloadUrl.isPending} onClick={() => void openDocument(document)}>{getDownloadUrl.isPending ? 'Opening…' : 'Open / download'}</Button></div>)}</div> : <p className="rounded-lg border border-dashed border-[oklch(0.84_0.018_75)] px-4 py-7 text-center text-sm italic text-[oklch(0.52_0.022_65)]">No Guatemala team documents have been added to this trip yet.</p>}</div>;
+  return <div className="space-y-4 pt-3">
+    <div className="rounded-lg border border-[oklch(0.84_0.018_75)] bg-[oklch(0.975_0.012_80)] p-4">
+      <p className="font-medium text-sm text-[oklch(0.22_0.018_55)]">Trip Docs</p>
+      <p className="mt-1 text-xs text-[oklch(0.52_0.022_65)]">These are trip-specific documents only. Materials that span several trips should be added on Reports & Resources under the Trips header.</p>
+      <div className="mt-3 grid gap-2 sm:grid-cols-[180px_1fr_auto]"><select aria-label="Document category" value={category} onChange={event => setCategory(event.target.value as TripGuateTeamDocument['category'])} className="h-9 rounded border border-[oklch(0.80_0.018_75)] bg-white px-2 text-sm">{GUATE_DOCUMENT_CATEGORIES.map(option => <option key={option} value={option}>{option}</option>)}</select><Input aria-label="Choose trip-specific document" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png" onChange={event => setFile(event.target.files?.[0] ?? null)} /><Button size="sm" disabled={!file || upload.isPending} onClick={() => void uploadSelected()}>{upload.isPending ? 'Uploading…' : 'Upload file'}</Button></div>
+      {message && <p className="mt-2 text-xs text-[oklch(0.42_0.018_55)]">{message}</p>}
+    </div>
+    {documents.length ? <div className="space-y-2">{documents.map(document => <div key={document.id} className="rounded-lg border border-[oklch(0.88_0.018_75)] bg-white p-3"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm font-medium text-[oklch(0.22_0.018_55)]">{document.name}</p><p className="mt-0.5 text-xs text-[oklch(0.52_0.022_65)]">{document.category} · Uploaded {formatDate(document.uploadedAt.slice(0, 10))}</p></div><div className="flex gap-2"><Button size="sm" variant="outline" disabled={getDownloadUrl.isPending} onClick={() => void downloadDocument(document)}>{getDownloadUrl.isPending ? 'Preparing…' : 'Download file'}</Button><Button size="sm" variant="outline" className="border-[oklch(0.72_0.11_27)] text-[oklch(0.48_0.18_27)] hover:bg-[oklch(0.97_0.025_27)]" onClick={() => setDeleteCandidate(document)}><Trash2 size={14} className="mr-1" />Delete</Button></div></div>{deleteCandidate?.id === document.id && <div role="alertdialog" className="mt-3 border-t border-[oklch(0.80_0.10_27)] pt-3"><p className="text-sm font-medium text-[oklch(0.42_0.16_27)]">Delete “{document.name}” from this trip?</p><p className="mt-1 text-xs text-[oklch(0.48_0.08_27)]">This removes the file from Trip Docs. It will no longer be accessible from the dashboard.</p><div className="mt-3 flex gap-2"><Button size="sm" variant="outline" onClick={() => setDeleteCandidate(null)}>Keep file</Button><Button size="sm" className="bg-[oklch(0.48_0.18_27)] hover:bg-[oklch(0.42_0.18_27)]" onClick={removeDocument}>Delete file</Button></div></div>}</div>)}</div> : <p className="rounded-lg border border-dashed border-[oklch(0.84_0.018_75)] px-4 py-7 text-center text-sm italic text-[oklch(0.52_0.022_65)]">No trip-specific documents have been added to this trip yet.</p>}
+  </div>;
 }
 
 function downloadFlightCompilationPdf(trip: Trip, travelers: FlightTraveler[]) {
@@ -171,18 +196,19 @@ function AttendeeSection({ trip, onSaveOperations }: { trip: Trip; onSaveOperati
   const updateAttendeeMut = trpc.trips.updateAttendee.useMutation({ onSuccess: () => utils.trips.list.invalidate() });
   const deleteAttendeeMut = trpc.trips.deleteAttendee.useMutation({ onSuccess: () => utils.trips.list.invalidate() });
   const [editingAttendeeId, setEditingAttendeeId] = useState<string | null>(null);
+  const [goingDeleteCandidate, setGoingDeleteCandidate] = useState<TripAttendee | null>(null);
   const [showLaterTripFor, setShowLaterTripFor] = useState<string | null>(null);
   const [flightEditor, setFlightEditor] = useState<FlightEditor | null>(null);
   const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', skills: [] as string[], isTeen: false, speaksSpanish: false, status: 'possible' as AttendeeRosterStatus, knowsAtTHV: [] as string[], knowsOther: '', notes: '' });
 
   const startEditAttendee = (a: TripAttendee) => {
     setEditingAttendeeId(a.id);
-    setEditForm({ name: a.name, email: a.email ?? '', phone: a.phone ?? '', skills: a.skills ?? [], isTeen: !!a.isTeen, speaksSpanish: !!a.speaksSpanish, status: attendeeRosterStatus(a), knowsAtTHV: a.knowsAtTHV ?? [], knowsOther: '', notes: a.notes ?? '' });
+    setEditForm({ name: a.name, email: a.email ?? '', phone: a.phone ?? '', skills: normalizeSkills(a.skills ?? []), isTeen: !!a.isTeen, speaksSpanish: !!a.speaksSpanish, status: attendeeRosterStatus(a), knowsAtTHV: a.knowsAtTHV ?? [], knowsOther: '', notes: a.notes ?? '' });
   };
 
   const handleSaveEdit = async (id: string) => {
     const knowsAll = [...editForm.knowsAtTHV, ...(editForm.knowsOther.trim() ? [editForm.knowsOther.trim()] : [])];
-    await updateAttendeeMut.mutateAsync({ id, name: editForm.name, email: editForm.email || undefined, phone: editForm.phone || undefined, skills: editForm.skills, isTeen: editForm.isTeen, speaksSpanish: editForm.speaksSpanish, ...attendeeFieldsForStatus(editForm.status), knowsAtTHV: knowsAll, notes: editForm.notes || undefined });
+    await updateAttendeeMut.mutateAsync({ id, name: editForm.name, email: editForm.email || undefined, phone: editForm.phone || undefined, skills: normalizeSkills(editForm.skills), isTeen: editForm.isTeen, speaksSpanish: editForm.speaksSpanish, ...attendeeFieldsForStatus(editForm.status), knowsAtTHV: knowsAll, notes: editForm.notes || undefined });
     setEditingAttendeeId(null);
   };
 
@@ -205,7 +231,7 @@ function AttendeeSection({ trip, onSaveOperations }: { trip: Trip; onSaveOperati
       name: form.name.trim(),
       email: form.email || undefined,
       phone: form.phone || undefined,
-      skills: form.skills,
+      skills: normalizeSkills(form.skills),
       isTeen: form.isTeen || undefined,
       speaksSpanish: form.speaksSpanish || undefined,
       ...attendeeFieldsForStatus(form.status),
@@ -224,7 +250,7 @@ function AttendeeSection({ trip, onSaveOperations }: { trip: Trip; onSaveOperati
       name: attendee.name,
       email: attendee.email || undefined,
       phone: attendee.phone || undefined,
-      skills: attendee.skills ?? [],
+      skills: normalizeSkills(attendee.skills ?? []),
       isTeen: attendee.isTeen,
       speaksSpanish: attendee.speaksSpanish,
       ...attendeeFieldsForStatus(status),
@@ -330,7 +356,9 @@ function AttendeeSection({ trip, onSaveOperations }: { trip: Trip; onSaveOperati
       <div className="space-y-4">
         <div className="rounded-lg border border-[oklch(0.84_0.04_145)] bg-[oklch(0.975_0.02_145)] p-3">
           <div className="mb-2 flex items-baseline justify-between"><p className="text-xs uppercase tracking-widest" style={{ color: 'oklch(0.30 0.10 145)' }}>Going ({totalTripNumber})</p><span className="text-xs" style={{ color: 'oklch(0.42 0.018 55)' }}>Leaders are included automatically; a guest check in either column places them here.</span></div>
-          {totalTripNumber ? <div className="overflow-x-auto"><table className="w-full min-w-[600px] text-xs"><thead><tr className="border-b border-[oklch(0.84_0.04_145)] text-left uppercase tracking-wide" style={{ color: 'oklch(0.42 0.018 55)' }}><th className="pb-2 pr-3">Name</th><th className="pb-2 pr-3">Tags</th><th className="pb-2 pr-3 text-center">Purchased ticket</th><th className="pb-2 text-center">Paid $500 to program / deposit</th></tr></thead><tbody>{leaders.map(leader => <tr key={`leader-${leader.name}`} className="border-b border-[oklch(0.90_0.02_145)]"><td className="py-2 pr-3 font-medium text-sm" style={{ color: 'oklch(0.22 0.018 55)' }}>{leader.name}</td><td className="py-2 pr-3"><div className="flex flex-wrap gap-1">{leader.tags.map(tag => <RosterTag key={tag} label={tag} />)}</div></td><td className="py-2 pr-3 text-center"><input aria-label={`Purchased ticket for leader ${leader.name}`} type="checkbox" checked={leader.purchasedTicket} onChange={event => event.target.checked ? openLeaderFlightDetails(leader.name) : updateLeaderTicket(leader.name, false)} /></td><td className="py-2 text-center text-[oklch(0.52_0.022_65)]">Not required</td></tr>)}{roster.goingGuests.map(a => <tr key={a.id} className="border-b border-[oklch(0.90_0.02_145)] last:border-0"><td className="py-2 pr-3 font-medium text-sm" style={{ color: 'oklch(0.22 0.018 55)' }}>{a.name}</td><td className="py-2 pr-3"><div className="flex flex-wrap gap-1">{a.isTeen && <RosterTag label="Youth" />}{a.speaksSpanish && <RosterTag label="SPANISH" />}{a.skills.map((skill: string) => <RosterTag key={skill} label={skill} />)}</div></td><td className="py-2 pr-3 text-center"><input aria-label={`Purchased ticket for ${a.name}`} type="checkbox" checked={!!a.purchasedTicket} onChange={e => e.target.checked ? openAttendeeFlightDetails(a) : void updateAttendeeMut.mutateAsync({ id: a.id, purchasedTicket: false })}/></td><td className="py-2 text-center"><input aria-label={`Paid $500 to program or deposit for ${a.name}`} type="checkbox" checked={!!a.tripLogistics?.depositPaid} onChange={e => void updateAttendeeMut.mutateAsync({ id: a.id, medicalProfile: { ...a.medicalProfile, tripLogistics: { ...a.tripLogistics, depositPaid: e.target.checked, depositDate: e.target.checked ? new Date().toISOString().slice(0, 10) : undefined } } })}/></td></tr>)}</tbody></table></div> : <p className="text-xs italic" style={{ color: 'oklch(0.42 0.018 55)' }}>No leaders or volunteers are going yet.</p>}
+          {totalTripNumber ? <div className="overflow-x-auto"><table className="w-full min-w-[680px] text-xs"><thead><tr className="border-b border-[oklch(0.84_0.04_145)] text-left uppercase tracking-wide" style={{ color: 'oklch(0.42 0.018 55)' }}><th className="pb-2 pr-3">Name</th><th className="pb-2 pr-3">Tags</th><th className="pb-2 pr-3 text-center">Purchased ticket</th><th className="pb-2 text-center">Paid $500 to program / deposit</th><th className="pb-2 pl-3 text-right">Actions</th></tr></thead><tbody>{leaders.map(leader => <tr key={`leader-${leader.name}`} className="border-b border-[oklch(0.90_0.02_145)]"><td className="py-2 pr-3 font-medium text-sm" style={{ color: 'oklch(0.22 0.018 55)' }}>{leader.name}</td><td className="py-2 pr-3"><div className="flex flex-wrap gap-1">{leader.tags.map(tag => <RosterTag key={tag} label={tag} />)}</div></td><td className="py-2 pr-3 text-center"><input aria-label={`Purchased ticket for leader ${leader.name}`} type="checkbox" checked={leader.purchasedTicket} onChange={event => event.target.checked ? openLeaderFlightDetails(leader.name) : updateLeaderTicket(leader.name, false)} /></td><td className="py-2 text-center text-[oklch(0.52_0.022_65)]">Not required</td><td /></tr>)}{roster.goingGuests.map(a => <tr key={a.id} className="border-b border-[oklch(0.90_0.02_145)] last:border-0"><td className="py-2 pr-3 font-medium text-sm" style={{ color: 'oklch(0.22 0.018 55)' }}>{a.name}</td><td className="py-2 pr-3"><div className="flex flex-wrap gap-1">{a.isTeen && <RosterTag label="Youth" />}{a.speaksSpanish && <RosterTag label="SPANISH" />}{a.skills.map((skill: string) => <RosterTag key={skill} label={skill} />)}</div></td><td className="py-2 pr-3 text-center"><input aria-label={`Purchased ticket for ${a.name}`} type="checkbox" checked={!!a.purchasedTicket} onChange={e => e.target.checked ? openAttendeeFlightDetails(a) : void updateAttendeeMut.mutateAsync({ id: a.id, purchasedTicket: false })}/></td><td className="py-2 text-center"><input aria-label={`Paid $500 to program or deposit for ${a.name}`} type="checkbox" checked={!!a.tripLogistics?.depositPaid} onChange={e => void updateAttendeeMut.mutateAsync({ id: a.id, medicalProfile: { ...a.medicalProfile, tripLogistics: { ...a.tripLogistics, depositPaid: e.target.checked, depositDate: e.target.checked ? new Date().toISOString().slice(0, 10) : undefined } } })}/></td><td className="py-2 pl-3 text-right"><button aria-label={`Edit ${a.name}`} onClick={() => startEditAttendee(a)} className="rounded p-1 hover:bg-[oklch(0.94_0.02_250)]"><Edit2 size={14} className="text-[oklch(0.42_0.15_250)]" /></button><button aria-label={`Delete ${a.name}`} onClick={() => setGoingDeleteCandidate(a)} className="ml-1 rounded p-1 hover:bg-red-50"><Trash2 size={14} className="text-[oklch(0.55_0.20_27)]" /></button></td></tr>)}</tbody></table></div> : <p className="text-xs italic" style={{ color: 'oklch(0.42 0.018 55)' }}>No leaders or volunteers are going yet.</p>}
+          {roster.goingGuests.filter(attendee => attendee.id === editingAttendeeId).map(attendee => <div key={`going-edit-${attendee.id}`} className="mt-3 rounded-md border border-[oklch(0.75_0.12_250)] bg-[oklch(0.97_0.03_250)] p-3"><div className="grid gap-2 sm:grid-cols-2"><Input value={editForm.name} onChange={event => setEditForm(value => ({ ...value, name: event.target.value }))} placeholder="Full name" /><Input type="email" value={editForm.email} onChange={event => setEditForm(value => ({ ...value, email: event.target.value }))} placeholder="Email" /><Input value={editForm.phone} onChange={event => setEditForm(value => ({ ...value, phone: event.target.value }))} placeholder="Phone" /><Input value={editForm.notes} onChange={event => setEditForm(value => ({ ...value, notes: event.target.value }))} placeholder="Notes" /></div><div className="mt-2 flex flex-wrap gap-1.5">{SKILLS.map(skill => <button key={skill} type="button" onClick={() => toggleEditSkill(skill)} className={`rounded-full border px-2 py-0.5 text-xs ${editForm.skills.includes(skill) ? 'border-[oklch(0.22_0.018_55)] bg-[oklch(0.22_0.018_55)] text-white' : 'border-[oklch(0.84_0.018_75)] bg-white text-[oklch(0.52_0.022_65)]'}`}>{skill}</button>)}</div><div className="mt-2 flex flex-wrap gap-3"><label className="flex items-center gap-1.5 text-xs"><input type="checkbox" checked={editForm.isTeen} onChange={event => setEditForm(value => ({ ...value, isTeen: event.target.checked }))} /> Teen</label><label className="flex items-center gap-1.5 text-xs"><input type="checkbox" checked={editForm.speaksSpanish} onChange={event => setEditForm(value => ({ ...value, speaksSpanish: event.target.checked }))} /> Speaks Spanish</label></div><div className="mt-3 flex gap-2"><Button size="sm" disabled={!editForm.name.trim() || updateAttendeeMut.isPending} onClick={() => void handleSaveEdit(attendee.id)}>Save attendee</Button><Button size="sm" variant="outline" onClick={() => setEditingAttendeeId(null)}>Cancel</Button></div></div>)}
+          {goingDeleteCandidate && <div role="alertdialog" className="mt-3 rounded-md border border-[oklch(0.76_0.12_27)] bg-[oklch(0.98_0.025_27)] p-3"><p className="text-sm font-medium text-[oklch(0.40_0.16_27)]">Delete {goingDeleteCandidate.name} from this trip?</p><p className="mt-1 text-xs text-[oklch(0.46_0.08_27)]">This permanently removes this attendee card and their trip details.</p><div className="mt-3 flex gap-2"><Button size="sm" variant="outline" onClick={() => setGoingDeleteCandidate(null)}>Keep attendee</Button><Button size="sm" className="bg-[oklch(0.48_0.18_27)] hover:bg-[oklch(0.42_0.18_27)]" disabled={deleteAttendeeMut.isPending} onClick={() => { void handleDelete(goingDeleteCandidate.id); setGoingDeleteCandidate(null); }}>Delete attendee</Button></div></div>}
           <div className="mt-3 flex items-baseline justify-between border-t border-[oklch(0.84_0.04_145)] pt-3"><span className="text-xs font-medium uppercase tracking-wide text-[oklch(0.30_0.10_145)]">Total program contribution</span><span className="font-display text-2xl text-[oklch(0.22_0.018_55)]">${(roster.goingGuests.filter(a => a.tripLogistics?.depositPaid).length * 500).toLocaleString()}</span></div>
         </div>
         <div><p className="mb-2 text-xs uppercase tracking-widest" style={{ color: 'oklch(0.52 0.022 65)' }}>Potential & confirmed attendees</p><div className="space-y-2">
@@ -345,7 +373,7 @@ function AttendeeSection({ trip, onSaveOperations }: { trip: Trip; onSaveOperati
                 {a.speaksSpanish && <RosterTag label="SPANISH" />}
                 {a.skills.length > 0 && (
                   <div className="flex gap-1 flex-wrap">
-                    {a.skills.map(s => <RosterTag key={s} label={s} />)}
+                    {a.skills.map(s => <RosterTag key={s} label={normalizeSkill(s)} />)}
                   </div>
                 )}
               </div>
@@ -396,7 +424,7 @@ function AttendeeSection({ trip, onSaveOperations }: { trip: Trip; onSaveOperati
                   <>
                     {a.email && <div className="flex items-center gap-2 text-xs"><Mail size={11} style={{ color: 'oklch(0.62 0.012 65)' }} /><span style={{ color: 'oklch(0.40 0.018 55)' }}>{a.email}</span></div>}
                     {a.phone && <div className="flex items-center gap-2 text-xs"><Phone size={11} style={{ color: 'oklch(0.62 0.012 65)' }} /><span style={{ color: 'oklch(0.40 0.018 55)' }}>{a.phone}</span></div>}
-                    {a.skills.length > 0 && <div className="flex flex-wrap gap-1 pt-0.5">{a.skills.map((s: string) => <span key={s} className="text-[10px] px-1.5 py-0.5 rounded-full bg-[oklch(0.88_0.022_72)] text-[oklch(0.28_0.018_55)]">{s}</span>)}</div>}
+                    {a.skills.length > 0 && <div className="flex flex-wrap gap-1 pt-0.5">{a.skills.map((s: string) => <span key={s} className="text-[10px] px-1.5 py-0.5 rounded-full bg-[oklch(0.88_0.022_72)] text-[oklch(0.28_0.018_55)]">{normalizeSkill(s)}</span>)}</div>}
                     {a.knowsAtTHV && a.knowsAtTHV.length > 0 && <p className="text-xs" style={{ color: 'oklch(0.52 0.022 65)' }}>Knows: {a.knowsAtTHV.join(', ')}</p>}
                     {a.notes && <p className="text-xs italic" style={{ color: 'oklch(0.52 0.022 65)' }}>{a.notes}</p>}
                     <div className="mt-2 flex flex-wrap items-center gap-3"><button onClick={() => startEditAttendee(a)} className="text-xs" style={{ color: 'oklch(0.50 0.18 250)' }}>Edit</button>{tripOptions.filter(option => option.id !== trip.id).length > 0 && <button onClick={() => setShowLaterTripFor(showLaterTripFor === a.id ? null : a.id)} className="text-xs text-[oklch(0.40_0.08_250)]">Go on a later trip</button>}</div>
@@ -502,7 +530,6 @@ function UsanaGardenTowerPanel({ trips, onSaveTrip }: { trips: Trip[]; onSaveTri
   const [project, setProject] = useState<NonNullable<TripOperations['usanaProject']>>({ contactName: 'Michelle Benedict', contactEmail: 'michelle.benedict@usanainc.com', contactPhone: '8019524518', contactAddress: '2538 S. 3850 W. Salt Lake City, UT 84120' });
   const projectQuery = trpc.usana.get.useQuery();
   const updateProject = trpc.usana.update.useMutation({ onSuccess: () => projectQuery.refetch() });
-  const uploadDocument = trpc.trips.uploadGardenTowerDocument.useMutation();
   const totalGardenTowers = trips.reduce((sum, trip) => sum + (trip.operations?.gardenTowers ?? 0), 0);
   const totalUsanaGrantDollars = receivedUsanaGrantTotal(trips);
 
@@ -514,28 +541,16 @@ function UsanaGardenTowerPanel({ trips, onSaveTrip }: { trips: Trip[]; onSaveTri
     void updateProject.mutateAsync(project);
   };
   const saveTripTowerFields = (trip: Trip, patch: Partial<TripOperations>) => onSaveTrip(trip.id, { operations: { ...trip.operations, ...patch } });
-  const uploadPdf = async (trip: Trip, file?: File) => {
-    if (!file) return;
-    if (file.type !== 'application/pdf') { window.alert('Please select a PDF document.'); return; }
-    const base64 = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '');
-      reader.onerror = () => reject(new Error('Could not read the selected PDF.'));
-      reader.readAsDataURL(file);
-    });
-    const uploaded = await uploadDocument.mutateAsync({ tripId: trip.id, fileName: file.name, base64 });
-    saveTripTowerFields(trip, { gardenTowerDocumentUrl: uploaded.key });
-  };
 
   return <section className="mb-8 overflow-hidden rounded-xl border border-[oklch(0.70_0.11_315)] bg-[oklch(0.98_0.018_315)]">
     <button onClick={() => setOpen(value => !value)} className="flex w-full items-center justify-between gap-3 p-5 text-left"><div><p className="text-xs uppercase tracking-[0.14em] text-[oklch(0.47_0.13_315)]">USANA</p><h2 className="font-display text-2xl text-[oklch(0.30_0.10_315)]">USANA Garden Tower Project</h2><p className="mt-1 text-xs text-[oklch(0.45_0.03_315)]">Global contract details plus V2V-specific tower plans, funds, and Guatemala documents.</p></div>{open ? <ChevronUp /> : <ChevronDown />}</button>
-    {open && <div className="border-t border-[oklch(0.84_0.035_315)] p-5"><div className="grid gap-3 sm:grid-cols-2"><Input placeholder="Contract / account number" value={project.contractNumber ?? ''} onChange={e => setProject(value => ({ ...value, contractNumber: e.target.value }))} onBlur={saveProject}/><Input placeholder="USANA contact name" value={project.contactName ?? ''} onChange={e => setProject(value => ({ ...value, contactName: e.target.value }))} onBlur={saveProject}/><Input placeholder="USANA contact email" type="email" value={project.contactEmail ?? ''} onChange={e => setProject(value => ({ ...value, contactEmail: e.target.value }))} onBlur={saveProject}/><Input placeholder="USANA contact phone" value={project.contactPhone ?? ''} onChange={e => setProject(value => ({ ...value, contactPhone: e.target.value }))} onBlur={saveProject}/><Input className="sm:col-span-2" placeholder="USANA contact address" value={project.contactAddress ?? ''} onChange={e => setProject(value => ({ ...value, contactAddress: e.target.value }))} onBlur={saveProject}/></div><div className="mt-4 grid gap-3 sm:grid-cols-2"><div className="rounded-lg border border-[oklch(0.83_0.05_315)] bg-white p-3"><p className="text-xs uppercase tracking-wide text-[oklch(0.47_0.13_315)]">Total garden towers erected</p><p className="mt-1 font-display text-3xl text-[oklch(0.30_0.10_315)]">{totalGardenTowers.toLocaleString()}</p></div><div className="rounded-lg border border-[oklch(0.83_0.05_315)] bg-white p-3"><p className="text-xs uppercase tracking-wide text-[oklch(0.47_0.13_315)]">Total USANA funds received</p><p className="mt-1 font-display text-3xl text-[oklch(0.30_0.10_315)]">${totalUsanaGrantDollars.toLocaleString()}</p><p className="mt-1 text-xs text-[oklch(0.45_0.03_315)]">Calculated from expedition grants marked received below.</p></div></div>
-      {trips.length === 0 ? <p className="mt-4 text-sm text-[oklch(0.52_0.022_65)]">Create a trip first to begin V2V Garden Tower planning.</p> : <div className="mt-6 space-y-3"><h3 className="font-display text-xl text-[oklch(0.22_0.018_55)]">V2V trip plans</h3>{[...trips].sort((first, second) => first.startDate.localeCompare(second.startDate)).map(trip => <GardenTowerTripRow key={trip.id} trip={trip} onSave={saveTripTowerFields} onUpload={uploadPdf} uploading={uploadDocument.isPending}/>)}</div>}
+    {open && <div className="border-t border-[oklch(0.84_0.035_315)] p-5"><div className="grid gap-3 sm:grid-cols-2"><Input placeholder="Contract / account number" value={project.contractNumber ?? ''} onChange={e => setProject(value => ({ ...value, contractNumber: e.target.value }))} onBlur={saveProject}/><Input placeholder="USANA contact name" value={project.contactName ?? ''} onChange={e => setProject(value => ({ ...value, contactName: e.target.value }))} onBlur={saveProject}/><Input placeholder="USANA contact email" type="email" value={project.contactEmail ?? ''} onChange={e => setProject(value => ({ ...value, contactEmail: e.target.value }))} onBlur={saveProject}/><Input placeholder="USANA contact phone" value={project.contactPhone ?? ''} onChange={e => setProject(value => ({ ...value, contactPhone: e.target.value }))} onBlur={saveProject}/><Input className="sm:col-span-2" placeholder="USANA contact address" value={project.contactAddress ?? ''} onChange={e => setProject(value => ({ ...value, contactAddress: e.target.value }))} onBlur={saveProject}/></div><div className="mt-4 grid gap-3 sm:grid-cols-2"><div className="rounded-lg border border-[oklch(0.83_0.05_315)] bg-white p-3"><p className="text-xs uppercase tracking-wide text-[oklch(0.47_0.13_315)]">Total garden towers erected</p><p className="mt-1 font-display text-3xl text-[oklch(0.30_0.10_315)]">{totalGardenTowers.toLocaleString()}</p><p className="mt-1 text-xs text-[oklch(0.45_0.03_315)]">To change this number, alter the number of Garden Towers on the individual V2V trips below.</p></div><div className="rounded-lg border border-[oklch(0.83_0.05_315)] bg-white p-3"><p className="text-xs uppercase tracking-wide text-[oklch(0.47_0.13_315)]">Total USANA funds received</p><p className="mt-1 font-display text-3xl text-[oklch(0.30_0.10_315)]">${totalUsanaGrantDollars.toLocaleString()}</p><p className="mt-1 text-xs text-[oklch(0.45_0.03_315)]">Calculated from expedition grants marked received below.</p></div></div>
+      {trips.length === 0 ? <p className="mt-4 text-sm text-[oklch(0.52_0.022_65)]">Create a trip first to begin V2V Garden Tower planning.</p> : <div className="mt-6 space-y-3"><h3 className="font-display text-xl text-[oklch(0.22_0.018_55)]">V2V trip plans</h3>{[...trips].sort((first, second) => first.startDate.localeCompare(second.startDate)).map(trip => <GardenTowerTripRow key={trip.id} trip={trip} onSave={saveTripTowerFields}/>)}</div>}
     </div>}
   </section>;
 }
 
-function GardenTowerTripRow({ trip, onSave, onUpload, uploading }: { trip: Trip; onSave: (trip: Trip, patch: Partial<TripOperations>) => void; onUpload: (trip: Trip, file?: File) => Promise<void>; uploading: boolean }) {
+function GardenTowerTripRow({ trip, onSave }: { trip: Trip; onSave: (trip: Trip, patch: Partial<TripOperations>) => void }) {
   const [towers, setTowers] = useState(String(trip.operations?.gardenTowers ?? ''));
   const [funds, setFunds] = useState(String(trip.operations?.gardenTowerFundsUsd ?? ''));
   const [fundsReceived, setFundsReceived] = useState(Boolean(trip.operations?.gardenTowerFundsReceived));
@@ -543,7 +558,7 @@ function GardenTowerTripRow({ trip, onSave, onUpload, uploading }: { trip: Trip;
   const documentQuery = trpc.trips.getGardenTowerDocumentUrl.useQuery({ key: documentKey }, { enabled: false, retry: false });
   useEffect(() => { setTowers(String(trip.operations?.gardenTowers ?? '')); setFunds(String(trip.operations?.gardenTowerFundsUsd ?? '')); setFundsReceived(Boolean(trip.operations?.gardenTowerFundsReceived)); }, [trip.id, trip.operations?.gardenTowers, trip.operations?.gardenTowerFundsUsd, trip.operations?.gardenTowerFundsReceived]);
   const openDocument = async () => { const response = await documentQuery.refetch(); if (response.data) window.open(response.data, '_blank', 'noopener,noreferrer'); };
-  return <div className="rounded-lg border border-[oklch(0.86_0.02_75)] bg-white p-4"><div className="mb-3 flex flex-wrap items-baseline justify-between gap-2"><div><p className="font-medium text-sm text-[oklch(0.22_0.018_55)]">{trip.name}</p><p className="text-xs text-[oklch(0.52_0.022_65)]">{formatDate(trip.startDate)}</p></div>{trip.operations?.gardenTowerDocumentUrl && <button onClick={() => void openDocument()} className="text-xs text-[oklch(0.48_0.16_250)]">View Guatemala GT assignments PDF</button>}</div><div className="grid gap-2 sm:grid-cols-2"><Input type="number" min="0" placeholder="Number of Garden Towers THV committed to" value={towers} onChange={e => setTowers(e.target.value)} onBlur={() => onSave(trip, { gardenTowers: Number(towers) || undefined })}/><Input type="number" min="0" placeholder="Garden Tower Funds from USANA" value={funds} onChange={e => setFunds(e.target.value)} onBlur={() => onSave(trip, { gardenTowerFundsUsd: Number(funds) || undefined })}/></div><label className="mt-3 flex items-center gap-2 text-xs text-[oklch(0.30_0.10_315)]"><input type="checkbox" checked={fundsReceived} onChange={event => { const checked = event.target.checked; setFundsReceived(checked); onSave(trip, { gardenTowerFundsReceived: checked }); }} />Funds received from USANA</label><div className="mt-3 flex flex-wrap items-center justify-end gap-3"><label className="text-xs text-[oklch(0.48_0.16_250)]">{uploading ? 'Uploading PDF…' : 'Upload Guatemala GT assignments PDF'}<input className="sr-only" type="file" accept="application/pdf" disabled={uploading} onChange={e => void onUpload(trip, e.target.files?.[0])}/></label></div></div>;
+  return <div className="rounded-lg border border-[oklch(0.86_0.02_75)] bg-white p-4"><div className="mb-3 flex flex-wrap items-baseline justify-between gap-2"><div><p className="font-medium text-sm text-[oklch(0.22_0.018_55)]">{trip.name}</p><p className="text-xs text-[oklch(0.52_0.022_65)]">{formatDate(trip.startDate)}</p></div>{trip.operations?.gardenTowerDocumentUrl && <button onClick={() => void openDocument()} className="text-xs text-[oklch(0.48_0.16_250)]">Download existing Guatemala GT assignments PDF</button>}</div><div className="grid gap-2 sm:grid-cols-2"><Input type="number" min="0" placeholder="Number of Garden Towers THV committed to" value={towers} onChange={e => setTowers(e.target.value)} onBlur={() => onSave(trip, { gardenTowers: Number(towers) || undefined })}/><Input type="number" min="0" placeholder="Garden Tower Funds from USANA" value={funds} onChange={e => setFunds(e.target.value)} onBlur={() => onSave(trip, { gardenTowerFundsUsd: Number(funds) || undefined })}/></div><label className="mt-3 flex items-center gap-2 text-xs text-[oklch(0.30_0.10_315)]"><input type="checkbox" checked={fundsReceived} onChange={event => { const checked = event.target.checked; setFundsReceived(checked); onSave(trip, { gardenTowerFundsReceived: checked }); }} />Funds received from USANA</label></div>;
 }
 
 interface TripCardProps {
@@ -696,13 +711,18 @@ function TripWorkspace({ trip, onSave }: { trip: Trip; onSave: (operations: Trip
   };
   const patchTask = (id: string, patch: Partial<TripPlanningTask>) => saveOps({ planningTasks: tasks.map(t => t.id === id ? { ...t, ...patch } : t) });
   const deleteTask = (id: string) => saveOps({ planningTasks: tasks.filter(taskItem => taskItem.id !== id) });
+  const applyExpeditionTemplate = () => {
+    if (hasExpeditionTodoTemplate(tasks)) return;
+    const templateTasks = buildExpeditionTodoTemplateTasks(key => `template-${key}-${nanoid()}`);
+    saveOps({ planningTasks: [...(ops.planningTasks ?? []), ...templateTasks.map((templateTask, index) => ({ ...templateTask, position: (ops.planningTasks?.length ?? 0) + index }))] });
+  };
   const assignmentPeople = Array.from(new Set([...leaders.map(leader => leader.name), ...going.map(attendee => attendee.name)])).sort((first, second) => first.localeCompare(second));
-  const tabs = [['attendees', 'Attendees'], ['expenses', 'Trip expenses'], ['tasks', 'Trip to-do list'], ['itinerary', 'Trip itinerary'], ['assignments', 'Assignments'], ['docs', 'Docs from Guate Team'], ['flights', 'Flight compilation']] as const;
+  const tabs = [['attendees', 'Attendees'], ['expenses', 'Trip expenses'], ['tasks', 'Trip to-do list'], ['itinerary', 'Trip itinerary'], ['assignments', 'Assignments'], ['docs', 'Trip Docs'], ['flights', 'Flight compilation']] as const;
   return <div className="mt-5 border-t border-[oklch(0.84_0.018_75)] pt-4">
     <div className="flex gap-1 overflow-x-auto pb-2">{tabs.map(([key, label]) => <button key={key} onClick={() => setTab(key)} className={`whitespace-nowrap rounded-full px-3 py-1 text-xs ${tab === key ? 'bg-[oklch(0.22_0.018_55)] text-white' : 'bg-[oklch(0.93_0.015_78)] text-[oklch(0.42_0.018_55)]'}`}>{label}</button>)}</div>
     {tab === 'attendees' && <AttendeeSection trip={trip} onSaveOperations={saveOps} />}
-    {tab === 'expenses' && <ExpenseWorkspace expenses={expenses} ops={ops} expense={expense} setExpense={setExpense} onAdd={addExpense} onSave={saveOps}/>} 
-    {tab === 'tasks' && <TripTodoListWithEntry tasks={tasks} draft={task} onDraftChange={setTask} onAdd={addTask} onPatch={patchTask} onDelete={deleteTask} />}
+    {tab === 'expenses' && <ExpenseWorkspace tripId={trip.id} expenses={expenses} ops={ops} expense={expense} setExpense={setExpense} onAdd={addExpense} onSave={saveOps}/>} 
+    {tab === 'tasks' && <TripTodoTemplateList tasks={tasks} draft={task} onDraftChange={setTask} onAdd={addTask} onPatch={patchTask} onDelete={deleteTask} templateApplied={hasExpeditionTodoTemplate(tasks)} onApplyTemplate={applyExpeditionTemplate} />}
     {tab === 'itinerary' && <TripItinerary trip={trip} operations={ops} templateTrips={store.trips} onSave={saveOps} />}
     {tab === 'assignments' && <TripAssignments goingPeople={assignmentPeople} operations={ops} onSave={saveOps} />}
     {tab === 'docs' && <GuateTeamDocuments trip={trip} operations={ops} onSave={saveOps} />}

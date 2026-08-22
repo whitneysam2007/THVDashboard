@@ -15,7 +15,9 @@ import { nanoid } from "nanoid";
 import { tagsWithPortfolio } from '../shared/donorPortfolios';
 import { joinAttendeeNotes, splitAttendeeNotes } from './medicalProfileStorage';
 import { joinTripNotes, splitTripNotes } from './tripOperationsStorage';
-import { getGardenTowerPdfDownloadUrl, getGuateTeamDocumentDownloadUrl, getUsanaProject, saveUsanaProject, uploadGardenTowerPdf, uploadGuateTeamDocument } from './usanaStorage';
+import { getGardenTowerPdfDownloadUrl, getGuateTeamDocumentDownloadUrl, getTripExpenseReceiptDownloadUrl, getUsanaProject, saveUsanaProject, uploadGardenTowerPdf, uploadGuateTeamDocument, uploadTripExpenseReceipt } from './usanaStorage';
+import { getResourceLibrary, getResourceLibraryDocumentDownloadUrl, getResourceLinkCategories, saveResourceLibrary, updateResourceLibraryDocumentCategory, updateResourceLinkCategory, uploadResourceLibraryDocument } from './resourceLibraryStorage';
+import { getMedicalTasks, saveMedicalTasks } from './medicalTasksStorage';
 
 type TeamAccessRow = {
   email: string;
@@ -44,6 +46,43 @@ export const appRouter = router({
       contactPhone: z.string().optional(),
       contactAddress: z.string().optional(),
     })).mutation(({ input }) => saveUsanaProject(input)),
+  }),
+
+  medicalTasks: router({
+    list: protectedProcedure.query(() => getMedicalTasks()),
+    save: protectedProcedure.input(z.array(z.object({
+      id: z.string().min(1),
+      title: z.string().trim().min(1).max(240),
+      owner: z.enum(['Emily', 'Liz', 'Amy', 'Kirsten', 'Brenley', 'Lauren', 'Anna', 'Yvonne/Nieve']),
+      category: z.enum(['Volunteer profiles & credentials', 'Expedition readiness', 'Clinical planning & supplies', 'Guatemala coordination', 'Follow-up & records', 'Other']),
+      dueDate: z.string().optional(),
+      notes: z.string().max(4_000).optional(),
+      completed: z.boolean().optional(),
+      completedAt: z.string().optional(),
+    })).max(1_000)).mutation(({ input }) => saveMedicalTasks(input)),
+  }),
+
+  resources: router({
+    list: protectedProcedure.query(() => getResourceLibrary()),
+    linkCategories: protectedProcedure.query(() => getResourceLinkCategories()),
+    upload: protectedProcedure.input(z.object({
+      category: z.enum(['Reports', 'Resources', 'Trips', 'USANA Garden Towers']),
+      fileName: z.string().min(1).max(160),
+      mimeType: z.string().min(1).max(160),
+      base64: z.string().min(1).max(22_000_000),
+    })).mutation(async ({ input }) => {
+      const uploaded = await uploadResourceLibraryDocument(input.category, input.fileName, Buffer.from(input.base64, 'base64'), input.mimeType);
+      const existing = await getResourceLibrary();
+      const document = { id: nanoid(), name: input.fileName, category: input.category, key: uploaded.key, mimeType: input.mimeType, uploadedAt: new Date().toISOString() };
+      await saveResourceLibrary([...existing, document]);
+      return document;
+    }),
+    getDownloadUrl: protectedProcedure.input(z.object({ key: z.string().min(1) }))
+      .mutation(({ input }) => getResourceLibraryDocumentDownloadUrl(input.key)),
+    updateCategory: protectedProcedure.input(z.object({ id: z.string().min(1), category: z.enum(['Reports', 'Resources', 'Trips', 'USANA Garden Towers']) }))
+      .mutation(({ input }) => updateResourceLibraryDocumentCategory(input.id, input.category)),
+    updateLinkCategory: protectedProcedure.input(z.object({ href: z.string().url(), category: z.enum(['Reports', 'Resources', 'Trips', 'USANA Garden Towers']) }))
+      .mutation(({ input }) => updateResourceLinkCategory(input.href, input.category)),
   }),
 
   teamAccess: router({
@@ -392,6 +431,17 @@ export const appRouter = router({
 
     getGuateTeamDocumentUrl: protectedProcedure.input(z.object({ key: z.string().min(1) }))
       .mutation(({ input }) => getGuateTeamDocumentDownloadUrl(input.key)),
+
+    uploadExpenseReceipt: protectedProcedure.input(z.object({
+      tripId: z.string(),
+      expenseId: z.string(),
+      fileName: z.string().min(1).max(160),
+      mimeType: z.string().min(1).max(160),
+      base64: z.string().min(1).max(22_000_000),
+    })).mutation(({ input }) => uploadTripExpenseReceipt(input.tripId, input.expenseId, input.fileName, Buffer.from(input.base64, 'base64'), input.mimeType)),
+
+    getExpenseReceiptUrl: protectedProcedure.input(z.object({ key: z.string().min(1) }))
+      .mutation(({ input }) => getTripExpenseReceiptDownloadUrl(input.key)),
 
     delete: protectedProcedure.input(z.object({ id: z.string() })).mutation(async ({ input }) => {
       await deleteTripById(input.id);
