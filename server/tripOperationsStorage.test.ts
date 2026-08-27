@@ -19,11 +19,11 @@ describe('trip operations note storage', () => {
 
   it('round-trips leader flight details and daily itinerary activities', () => {
     const stored = joinTripNotes('', {
-      leaderLogistics: { Liz: { purchasedTicket: true, flight: { airline: 'Avianca', flightNumber: 'AV001', baggageNotes: 'Two bags' } } },
+      leaderLogistics: { Liz: { purchasedTicket: true, flight: { airline: 'Avianca', flightNumber: 'AV001', departureDateTime: '2026-11-07', outboundDepartureTime: '06:20', outboundLandingTime: '12:45', returnDateTime: '2026-11-15', returnDepartureTime: '14:30', returnLandingTime: '21:10', baggageNotes: 'Two bags' } } },
       itineraryDays: [{ date: '2026-11-07', activities: [{ id: 'arrival', title: 'Arrive in Guatemala City', notes: 'Shuttle to hotel.' }] }],
     });
     expect(splitTripNotes(stored).operations).toMatchObject({
-      leaderLogistics: { Liz: { purchasedTicket: true, flight: { airline: 'Avianca', flightNumber: 'AV001', baggageNotes: 'Two bags' } } },
+      leaderLogistics: { Liz: { purchasedTicket: true, flight: { airline: 'Avianca', flightNumber: 'AV001', departureDateTime: '2026-11-07', outboundDepartureTime: '06:20', outboundLandingTime: '12:45', returnDateTime: '2026-11-15', returnDepartureTime: '14:30', returnLandingTime: '21:10', baggageNotes: 'Two bags' } } },
       itineraryDays: [{ date: '2026-11-07', activities: [{ id: 'arrival', title: 'Arrive in Guatemala City', notes: 'Shuttle to hotel.' }] }],
     });
   });

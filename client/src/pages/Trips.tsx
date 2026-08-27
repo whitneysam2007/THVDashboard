@@ -52,15 +52,22 @@ type FlightEditor = {
 function FlightDetailsCard({ editor, onClose }: { editor: FlightEditor; onClose: () => void }) {
   const [flight, setFlight] = useState<TripFlightDetails>(editor.flight);
   const [saving, setSaving] = useState(false);
-  const fields: Array<[keyof TripFlightDetails, string]> = [
-    ['airline', 'Airline'], ['flightNumber', 'Flight number'], ['departureAirport', 'Departure airport'], ['arrivalAirport', 'Arrival airport'],
-    ['departureDateTime', 'Departure date / time'], ['returnDateTime', 'Return date / time'], ['bookingReference', 'Booking reference'], ['seatNotes', 'Seat notes'], ['baggageNotes', 'Baggage / 2-bag notes'],
+  const fields: Array<{ field: keyof TripFlightDetails; label: string; type?: 'time' }> = [
+    { field: 'airline', label: 'Airline' }, { field: 'flightNumber', label: 'Flight number' }, { field: 'departureAirport', label: 'Home departure airport' }, { field: 'arrivalAirport', label: 'Guatemala arrival airport' },
+    { field: 'departureDateTime', label: 'Outbound departure date' }, { field: 'outboundDepartureTime', label: 'Outbound departure time', type: 'time' }, { field: 'outboundLandingTime', label: 'Guatemala landing time', type: 'time' },
+    { field: 'returnDateTime', label: 'Return departure date' }, { field: 'returnDepartureTime', label: 'Return departure time', type: 'time' }, { field: 'returnLandingTime', label: 'Home-airport landing time', type: 'time' },
+    { field: 'bookingReference', label: 'Booking reference' }, { field: 'seatNotes', label: 'Seat notes' }, { field: 'baggageNotes', label: 'Baggage / 2-bag notes' },
   ];
   const save = async () => { setSaving(true); try { await editor.onSave(flight); onClose(); } finally { setSaving(false); } };
-  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"><div className="w-full max-w-2xl rounded-2xl bg-[oklch(0.985_0.008_80)] p-5 shadow-2xl"><div className="flex items-start justify-between gap-4 border-b border-[oklch(0.84_0.018_75)] pb-3"><div><p className="text-xs uppercase tracking-[0.14em] text-[oklch(0.52_0.022_65)]">Purchased ticket</p><h2 className="font-display text-2xl text-[oklch(0.22_0.018_55)]">Flight details for {editor.name}</h2><p className="mt-1 text-xs text-[oklch(0.52_0.022_65)]">Save these details to add them directly to Flight Compilation.</p></div><button onClick={onClose} className="rounded p-2 hover:bg-[oklch(0.92_0.012_78)]" aria-label="Close flight details"><X size={18} /></button></div><div className="mt-4 grid gap-2 sm:grid-cols-2">{fields.map(([field, label]) => <Input key={field} placeholder={label} value={flight[field] ?? ''} onChange={event => setFlight(current => ({ ...current, [field]: event.target.value }))} />)}</div><div className="mt-5 flex justify-end gap-2"><Button variant="outline" onClick={onClose}>Cancel</Button><Button disabled={saving} onClick={() => void save()}>{saving ? 'Saving…' : 'Save flight details'}</Button></div></div></div>;
+  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"><div className="w-full max-w-2xl rounded-2xl bg-[oklch(0.985_0.008_80)] p-5 shadow-2xl"><div className="flex items-start justify-between gap-4 border-b border-[oklch(0.84_0.018_75)] pb-3"><div><p className="text-xs uppercase tracking-[0.14em] text-[oklch(0.52_0.022_65)]">Purchased ticket</p><h2 className="font-display text-2xl text-[oklch(0.22_0.018_55)]">Flight details for {editor.name}</h2><p className="mt-1 text-xs text-[oklch(0.52_0.022_65)]">Add departure and landing times so the Guatemala airport shuttle can be planned accurately.</p></div><button onClick={onClose} className="rounded p-2 hover:bg-[oklch(0.92_0.012_78)]" aria-label="Close flight details"><X size={18} /></button></div><div className="mt-4 grid gap-2 sm:grid-cols-2">{fields.map(({ field, label, type }) => <label key={field} className="text-xs text-[oklch(0.48_0.022_65)]">{label}<Input aria-label={label} type={type ?? 'text'} className="mt-1" value={flight[field] ?? ''} onChange={event => setFlight(current => ({ ...current, [field]: event.target.value }))} /></label>)}</div><div className="mt-5 flex justify-end gap-2"><Button variant="outline" onClick={onClose}>Cancel</Button><Button disabled={saving} onClick={() => void save()}>{saving ? 'Saving…' : 'Save flight details'}</Button></div></div></div>;
 }
 
 type FlightTraveler = { name: string; flight?: TripFlightDetails };
+
+function FlightCompilationEntry({ name, leader, flight, onUpdate }: { name: string; leader?: boolean; flight?: TripFlightDetails; onUpdate: (field: keyof TripFlightDetails, value: string) => void }) {
+  const field = (key: keyof TripFlightDetails, label: string, type: 'text' | 'time' = 'text') => <label key={key} className="text-xs text-[oklch(0.48_0.022_65)]">{label}<Input aria-label={`${label} for ${name}`} type={type} className="mt-1 h-8" defaultValue={flight?.[key] ?? ''} onBlur={event => onUpdate(key, event.target.value)} /></label>;
+  return <div className="rounded-lg border border-[oklch(0.87_0.018_75)] bg-white p-3"><div className="mb-3 flex items-baseline justify-between gap-3"><p className="text-sm font-medium text-[oklch(0.22_0.018_55)]">{name}{leader && <span className="ml-1 text-xs font-normal text-[oklch(0.48_0.04_315)]">Leader</span>}</p><span className="text-[10px] uppercase tracking-[0.1em] text-[oklch(0.52_0.022_65)]">Saves when you leave a field</span></div><div className="grid gap-2 sm:grid-cols-2">{field('airline', 'Airline')}{field('flightNumber', 'Flight number')}{field('departureAirport', 'Home departure airport')}{field('arrivalAirport', 'Guatemala arrival airport')}</div><div className="mt-3 rounded-md border border-[oklch(0.84_0.04_145)] bg-[oklch(0.98_0.014_145)] p-3"><p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[oklch(0.30_0.10_145)]">Outbound flight — Guatemala arrival</p><div className="grid gap-2 sm:grid-cols-3">{field('departureDateTime', 'Departure date')}{field('outboundDepartureTime', 'Departure time', 'time')}{field('outboundLandingTime', 'Landing time in Guatemala', 'time')}</div></div><div className="mt-3 rounded-md border border-[oklch(0.86_0.035_315)] bg-[oklch(0.98_0.012_315)] p-3"><p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[oklch(0.36_0.12_315)]">Return flight — home arrival</p><div className="grid gap-2 sm:grid-cols-3">{field('returnDateTime', 'Return departure date')}{field('returnDepartureTime', 'Return departure time', 'time')}{field('returnLandingTime', 'Landing time at home airport', 'time')}</div></div><div className="mt-3 grid gap-2 sm:grid-cols-3">{field('bookingReference', 'Booking reference')}{field('seatNotes', 'Seat notes')}{field('baggageNotes', 'Baggage / 2-bag notes')}</div></div>;
+}
 
 const GUATE_DOCUMENT_CATEGORIES: TripGuateTeamDocument['category'][] = ['Garden Tower', 'Family market list', 'Home visits', 'Other'];
 
@@ -142,7 +149,7 @@ function downloadFlightCompilationPdf(trip: Trip, travelers: FlightTraveler[]) {
   doc.text(`${trip.name} · ${formatDate(trip.startDate)}${trip.endDate ? ` – ${formatDate(trip.endDate)}` : ''}`, margin, y);
   y += 18;
   doc.setTextColor(83, 75, 66);
-  doc.text('Prepared for Amy · Confirm airline details, booking references, seats, and two checked bags for THV supplies.', margin, y);
+  doc.text('Prepared for Amy · Confirm departure and landing times, airline details, booking references, seats, and two checked bags.', margin, y);
   y += 22;
 
   travelers.forEach((attendee, index) => {
@@ -150,11 +157,12 @@ function downloadFlightCompilationPdf(trip: Trip, travelers: FlightTraveler[]) {
     const lines = [
       `Airline / flight: ${flight.airline || '—'} ${flight.flightNumber || ''}`,
       `Route: ${flight.departureAirport || '—'} → ${flight.arrivalAirport || '—'}`,
-      `Departure: ${flight.departureDateTime || '—'}     Return: ${flight.returnDateTime || '—'}`,
+      `Outbound: Depart ${flight.departureDateTime || '—'} at ${flight.outboundDepartureTime || '—'}     Land in Guatemala at ${flight.outboundLandingTime || '—'}`,
+      `Return: Depart ${flight.returnDateTime || '—'} at ${flight.returnDepartureTime || '—'}     Land at home airport at ${flight.returnLandingTime || '—'}`,
       `Booking reference: ${flight.bookingReference || '—'}     Seat notes: ${flight.seatNotes || '—'}`,
       `Baggage / 2-bag notes: ${flight.baggageNotes || '—'}`,
     ];
-    const cardHeight = 92;
+    const cardHeight = 105;
     if (y + cardHeight > 540) { doc.addPage(); y = 48; }
     doc.setFillColor(248, 245, 239);
     doc.roundedRect(margin, y - 17, pageWidth - margin * 2, cardHeight, 5, 5, 'F');
@@ -696,7 +704,7 @@ function TripWorkspace({ trip, onSave }: { trip: Trip; onSave: (operations: Trip
   const markDeposit = async (a: TripAttendee, paid: boolean) => {
     await updateAttendee.mutateAsync({ id: a.id, medicalProfile: { ...a.medicalProfile, tripLogistics: { ...a.tripLogistics, depositPaid: paid, depositDate: paid ? new Date().toISOString().slice(0, 10) : undefined } } });
   };
-  const updateFlight = async (a: TripAttendee, field: string, value: string) => {
+  const updateFlight = async (a: TripAttendee, field: keyof TripFlightDetails, value: string) => {
     await updateAttendee.mutateAsync({ id: a.id, medicalProfile: { ...a.medicalProfile, tripLogistics: { ...a.tripLogistics, flight: { ...a.tripLogistics?.flight, [field]: value } } } });
   };
   const addExpense = () => {
@@ -726,7 +734,7 @@ function TripWorkspace({ trip, onSave }: { trip: Trip; onSave: (operations: Trip
     {tab === 'itinerary' && <TripItinerary trip={trip} operations={ops} templateTrips={store.trips} onSave={saveOps} />}
     {tab === 'assignments' && <TripAssignments goingPeople={assignmentPeople} operations={ops} onSave={saveOps} />}
     {tab === 'docs' && <GuateTeamDocuments trip={trip} operations={ops} onSave={saveOps} />}
-    {tab === 'flights' && <div className="space-y-3 pt-3"><p className="text-xs text-[oklch(0.52_0.022_65)]">Flight compilation for all leaders and volunteers who are going. Changes save when you leave a field. Include two checked bags for THV supplies where needed.</p>{leaders.map(leader => <div key={`leader-flight-${leader.name}`} className="rounded-lg border border-[oklch(0.87_0.018_75)] bg-white p-3"><p className="mb-2 text-sm font-medium">{leader.name} <span className="ml-1 text-xs font-normal text-[oklch(0.48_0.04_315)]">Leader</span></p><div className="grid grid-cols-2 gap-2">{[['airline','Airline'],['flightNumber','Flight number'],['departureAirport','Departure airport'],['arrivalAirport','Arrival airport'],['departureDateTime','Departure date/time'],['returnDateTime','Return date/time'],['bookingReference','Booking reference'],['seatNotes','Seat notes'],['baggageNotes','Baggage / 2-bag notes']].map(([field, label]) => <Input key={`${leader.name}-${field}-${(ops.leaderLogistics?.[leader.name]?.flight as any)?.[field] ?? ''}`} placeholder={label} defaultValue={(ops.leaderLogistics?.[leader.name]?.flight as any)?.[field] ?? ''} onBlur={e => saveOps({ leaderLogistics: { ...ops.leaderLogistics, [leader.name]: { ...ops.leaderLogistics?.[leader.name], flight: { ...ops.leaderLogistics?.[leader.name]?.flight, [field]: e.target.value } } } })}/>)}</div></div>)}{going.map(a => <div key={a.id} className="rounded-lg border border-[oklch(0.87_0.018_75)] bg-white p-3"><p className="mb-2 text-sm font-medium">{a.name}</p><div className="grid grid-cols-2 gap-2">{[['airline','Airline'],['flightNumber','Flight number'],['departureAirport','Departure airport'],['arrivalAirport','Arrival airport'],['departureDateTime','Departure date/time'],['returnDateTime','Return date/time'],['bookingReference','Booking reference'],['seatNotes','Seat notes'],['baggageNotes','Baggage / 2-bag notes']].map(([field, label]) => <Input key={`${a.id}-${field}-${(a.tripLogistics?.flight as any)?.[field] ?? ''}`} placeholder={label} defaultValue={(a.tripLogistics?.flight as any)?.[field] ?? ''} onBlur={e => void updateFlight(a, field, e.target.value)}/>)}</div></div>)}<div className="flex justify-end border-t border-[oklch(0.90_0.012_76)] pt-4"><Button size="sm" onClick={() => downloadFlightCompilationPdf(trip, flightTravelers)}>Download PDF</Button></div></div>}
+    {tab === 'flights' && <div className="space-y-3 pt-3"><div className="rounded-lg border border-[oklch(0.80_0.08_145)] bg-[oklch(0.975_0.02_145)] p-3 text-xs text-[oklch(0.32_0.08_145)]">Use the Guatemala landing time to organize airport shuttles. Each time is entered in the local time of that airport. Changes save when you leave a field.</div>{leaders.map(leader => <FlightCompilationEntry key={`leader-flight-${leader.name}`} name={leader.name} leader flight={ops.leaderLogistics?.[leader.name]?.flight} onUpdate={(field, value) => saveOps({ leaderLogistics: { ...ops.leaderLogistics, [leader.name]: { ...ops.leaderLogistics?.[leader.name], flight: { ...ops.leaderLogistics?.[leader.name]?.flight, [field]: value } } } })} />)}{going.map(attendee => <FlightCompilationEntry key={attendee.id} name={attendee.name} flight={attendee.tripLogistics?.flight} onUpdate={(field, value) => void updateFlight(attendee, field, value)} />)}<div className="flex justify-end border-t border-[oklch(0.90_0.012_76)] pt-4"><Button size="sm" onClick={() => downloadFlightCompilationPdf(trip, flightTravelers)}>Download PDF</Button></div></div>}
   </div>;
 }
 

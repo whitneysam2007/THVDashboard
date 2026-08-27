@@ -37,7 +37,11 @@ export type TripFlightDetails = {
   departureAirport?: string;
   arrivalAirport?: string;
   departureDateTime?: string;
+  outboundDepartureTime?: string;
+  outboundLandingTime?: string;
   returnDateTime?: string;
+  returnDepartureTime?: string;
+  returnLandingTime?: string;
   bookingReference?: string;
   seatNotes?: string;
   baggageNotes?: string;

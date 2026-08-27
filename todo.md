@@ -262,6 +262,8 @@
 - [x] Initiatives: Gantt + card list, full CRUD
 - [x] Tasks page: all tasks across donors, grouped, collapsible, edit + delete + mark done UI
 - [x] Next major-donor priorities: prompt for and persist a chosen completion date when marking a task done
+- [x] Trip flights: capture outbound and return departure and landing times, then display them in Flight Compilation for shuttle planning
+- [x] Deployment: push the reviewed flight departure and landing time update to GitHub for Netlify deployment
 - [x] USANA Garden Tower: remove the Guatemala GT assignments PDF upload control and clarify that total completed towers is derived from the per-trip plans below
 - [x] USANA Garden Tower: use the approved individual-V2V-trips wording below the total Garden Towers number
 - [x] Trip to-do list: add Amy’s reusable Expedition To-Do template with every parent task and visually linked, separately assignable subtask
