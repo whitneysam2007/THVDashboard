@@ -86,6 +86,13 @@ export type TripGuateTeamDocument = {
   uploadedAt: string;
 };
 
+export type TripPhotoLink = {
+  id: string;
+  label: string;
+  url: string;
+  addedAt: string;
+};
+
 export type TripOperations = {
   expenses?: TripExpense[];
   quetzalesPerUsd?: number;
@@ -96,6 +103,7 @@ export type TripOperations = {
   activityGroups?: TripActivityGroup[];
   lodgingAssignments?: TripLodgingAssignment[];
   guateTeamDocuments?: TripGuateTeamDocument[];
+  photoLinks?: TripPhotoLink[];
   gardenTowers?: number;
   gardenTowerFundsUsd?: number;
   gardenTowerFundsReceived?: boolean;

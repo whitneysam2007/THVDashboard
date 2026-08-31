@@ -41,4 +41,17 @@ describe('trip operations note storage', () => {
       },
     });
   });
+
+  it('round-trips multiple external photo folders for a trip', () => {
+    const stored = joinTripNotes('', {
+      photoLinks: [
+        { id: 'nov-photos', label: 'November 2026 — Google Photos', url: 'https://photos.app.goo.gl/example', addedAt: '2026-11-20T12:00:00.000Z' },
+        { id: 'team-picks', label: 'Team picks — Apple Shared Album', url: 'https://www.icloud.com/sharedalbum/#example', addedAt: '2026-11-21T12:00:00.000Z' },
+      ],
+    });
+    expect(splitTripNotes(stored).operations?.photoLinks).toEqual([
+      { id: 'nov-photos', label: 'November 2026 — Google Photos', url: 'https://photos.app.goo.gl/example', addedAt: '2026-11-20T12:00:00.000Z' },
+      { id: 'team-picks', label: 'Team picks — Apple Shared Album', url: 'https://www.icloud.com/sharedalbum/#example', addedAt: '2026-11-21T12:00:00.000Z' },
+    ]);
+  });
 });

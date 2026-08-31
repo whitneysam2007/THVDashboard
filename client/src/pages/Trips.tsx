@@ -19,7 +19,7 @@ import { TripTodoTemplateList } from '@/components/TripTodoTemplateList';
 import { Plus, Plane, Calendar, Users, X, Edit2, Check, Trash2, Mail, Phone, ChevronDown, ChevronUp } from 'lucide-react';
 import { nanoid } from 'nanoid';
 import { jsPDF } from 'jspdf';
-import type { TripExpense, TripFlightDetails, TripGuateTeamDocument, TripOperations, TripPlanningTask } from '../../../shared/tripOperations';
+import type { TripExpense, TripFlightDetails, TripGuateTeamDocument, TripOperations, TripPhotoLink, TripPlanningTask } from '../../../shared/tripOperations';
 import { buildExpeditionTodoTemplateTasks, hasExpeditionTodoTemplate } from '../../../shared/expeditionTodoTemplate';
 
 const SKILLS = ['Medical', 'Nurse', 'Doctor', 'OB', 'Radiology', 'Teacher', "Q'eqchi", 'Photography', 'Volunteer'];
@@ -132,6 +132,37 @@ function GuateTeamDocuments({ trip, operations, onSave }: { trip: Trip; operatio
     </div>
     {documents.length ? <div className="space-y-2">{documents.map(document => <div key={document.id} className="rounded-lg border border-[oklch(0.88_0.018_75)] bg-white p-3"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm font-medium text-[oklch(0.22_0.018_55)]">{document.name}</p><p className="mt-0.5 text-xs text-[oklch(0.52_0.022_65)]">{document.category} · Uploaded {formatDate(document.uploadedAt.slice(0, 10))}</p></div><div className="flex gap-2"><Button size="sm" variant="outline" disabled={getDownloadUrl.isPending} onClick={() => void downloadDocument(document)}>{getDownloadUrl.isPending ? 'Preparing…' : 'Download file'}</Button><Button size="sm" variant="outline" className="border-[oklch(0.72_0.11_27)] text-[oklch(0.48_0.18_27)] hover:bg-[oklch(0.97_0.025_27)]" onClick={() => setDeleteCandidate(document)}><Trash2 size={14} className="mr-1" />Delete</Button></div></div>{deleteCandidate?.id === document.id && <div role="alertdialog" className="mt-3 border-t border-[oklch(0.80_0.10_27)] pt-3"><p className="text-sm font-medium text-[oklch(0.42_0.16_27)]">Delete “{document.name}” from this trip?</p><p className="mt-1 text-xs text-[oklch(0.48_0.08_27)]">This removes the file from Trip Docs. It will no longer be accessible from the dashboard.</p><div className="mt-3 flex gap-2"><Button size="sm" variant="outline" onClick={() => setDeleteCandidate(null)}>Keep file</Button><Button size="sm" className="bg-[oklch(0.48_0.18_27)] hover:bg-[oklch(0.42_0.18_27)]" onClick={removeDocument}>Delete file</Button></div></div>}</div>)}</div> : <p className="rounded-lg border border-dashed border-[oklch(0.84_0.018_75)] px-4 py-7 text-center text-sm italic text-[oklch(0.52_0.022_65)]">No trip-specific documents have been added to this trip yet.</p>}
   </div>;
+}
+
+function isShareablePhotoUrl(value: string) {
+  try {
+    return new URL(value).protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function TripPhotoLinks({ operations, onSave }: { operations: TripOperations; onSave: (updates: Partial<TripOperations>) => void }) {
+  const links = operations.photoLinks ?? [];
+  const [showAdd, setShowAdd] = useState(false);
+  const [draft, setDraft] = useState({ label: '', url: '' });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editing, setEditing] = useState({ label: '', url: '' });
+  const [removeCandidate, setRemoveCandidate] = useState<TripPhotoLink | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const addLink = () => {
+    const label = draft.label.trim(); const url = draft.url.trim();
+    if (!label || !isShareablePhotoUrl(url)) { setMessage('Add a folder name and a valid https:// share link.'); return; }
+    onSave({ photoLinks: [...links, { id: nanoid(), label, url, addedAt: new Date().toISOString() }] });
+    setDraft({ label: '', url: '' }); setShowAdd(false); setMessage('Photo folder link added.');
+  };
+  const saveEdit = () => {
+    const label = editing.label.trim(); const url = editing.url.trim();
+    if (!editingId || !label || !isShareablePhotoUrl(url)) { setMessage('Use a folder name and a valid https:// share link.'); return; }
+    onSave({ photoLinks: links.map(link => link.id === editingId ? { ...link, label, url } : link) });
+    setEditingId(null); setMessage('Photo folder link updated.');
+  };
+  return <div className="space-y-3 pt-3"><div className="rounded-lg border border-[oklch(0.79_0.06_250)] bg-[oklch(0.975_0.02_250)] p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-sm font-medium text-[oklch(0.22_0.018_55)]">Trip photo folders</p><p className="mt-1 text-xs text-[oklch(0.45_0.022_65)]">Store links to this trip’s photos. The photos stay in Google Photos, Apple Photos, Google Drive, or your preferred service.</p></div><Button size="sm" variant="outline" onClick={() => { setShowAdd(value => !value); setMessage(null); }}>{showAdd ? 'Cancel' : <><Plus size={14} className="mr-1" />Add photo folder</>}</Button></div>{showAdd && <div className="mt-3 grid gap-2 border-t border-[oklch(0.82_0.06_250)] pt-3 sm:grid-cols-[minmax(160px,1fr)_minmax(240px,2fr)_auto]"><Input aria-label="Photo folder name" value={draft.label} onChange={event => setDraft(value => ({ ...value, label: event.target.value }))} placeholder="Folder name, e.g. November 2026" /><Input aria-label="Photo-folder share link" type="url" value={draft.url} onChange={event => setDraft(value => ({ ...value, url: event.target.value }))} placeholder="Paste an https:// share link" /><Button size="sm" disabled={!draft.label.trim() || !draft.url.trim()} onClick={addLink}>Add link</Button></div>}{message && <p className="mt-2 text-xs text-[oklch(0.36_0.09_145)]">{message}</p>}</div>{links.length ? <div className="space-y-2">{links.map(link => <div key={link.id} className="rounded-lg border border-[oklch(0.88_0.018_75)] bg-white p-3">{editingId === link.id ? <div className="grid gap-2 sm:grid-cols-[minmax(160px,1fr)_minmax(240px,2fr)_auto_auto]"><Input aria-label={`Photo folder name for ${link.label}`} value={editing.label} onChange={event => setEditing(value => ({ ...value, label: event.target.value }))} /><Input aria-label={`Photo-folder share link for ${link.label}`} type="url" value={editing.url} onChange={event => setEditing(value => ({ ...value, url: event.target.value }))} /><Button size="sm" onClick={saveEdit}>Save</Button><Button size="sm" variant="outline" onClick={() => setEditingId(null)}>Cancel</Button></div> : <><div className="flex flex-wrap items-center justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-medium text-[oklch(0.22_0.018_55)]">{link.label}</p><p className="mt-0.5 truncate text-xs text-[oklch(0.52_0.022_65)]">{link.url}</p></div><div className="flex shrink-0 gap-2"><a href={link.url} target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center rounded-md bg-[oklch(0.50_0.18_250)] px-3 text-xs font-medium text-white hover:bg-[oklch(0.44_0.18_250)]">Open folder</a><Button size="sm" variant="outline" onClick={() => { setEditingId(link.id); setEditing({ label: link.label, url: link.url }); setRemoveCandidate(null); }}>Edit</Button><Button size="sm" variant="outline" className="border-[oklch(0.72_0.11_27)] text-[oklch(0.48_0.18_27)] hover:bg-[oklch(0.97_0.025_27)]" onClick={() => { setRemoveCandidate(link); setEditingId(null); }}>Remove</Button></div></div>{removeCandidate?.id === link.id && <div role="alertdialog" className="mt-3 border-t border-[oklch(0.80_0.10_27)] pt-3"><p className="text-sm font-medium text-[oklch(0.42_0.16_27)]">Remove “{link.label}” from this trip?</p><div className="mt-3 flex gap-2"><Button size="sm" variant="outline" onClick={() => setRemoveCandidate(null)}>Keep link</Button><Button size="sm" className="bg-[oklch(0.48_0.18_27)] hover:bg-[oklch(0.42_0.18_27)]" onClick={() => { onSave({ photoLinks: links.filter(item => item.id !== link.id) }); setRemoveCandidate(null); setMessage('Photo folder link removed.'); }}>Remove link</Button></div></div>}</>}</div>)}</div> : <p className="rounded-lg border border-dashed border-[oklch(0.84_0.018_75)] px-4 py-7 text-center text-sm italic text-[oklch(0.52_0.022_65)]">No photo folders have been added to this trip yet.</p>}</div>;
 }
 
 function downloadFlightCompilationPdf(trip: Trip, travelers: FlightTraveler[]) {
@@ -683,7 +714,7 @@ function TripCard({ trip, onEdit, onDelete, isEditing, workspaceOpen, onToggleWo
 
 function TripWorkspace({ trip, onSave }: { trip: Trip; onSave: (operations: TripOperations) => void }) {
   const { store } = useDashboard();
-  const [tab, setTab] = useState<'attendees' | 'expenses' | 'tasks' | 'itinerary' | 'assignments' | 'docs' | 'flights'>('attendees');
+  const [tab, setTab] = useState<'attendees' | 'expenses' | 'tasks' | 'itinerary' | 'assignments' | 'docs' | 'photos' | 'flights'>('attendees');
   const [expense, setExpense] = useState<Partial<TripExpense>>({});
   const [task, setTask] = useState<Partial<TripPlanningTask>>({});
   const utils = trpc.useUtils();
@@ -725,7 +756,7 @@ function TripWorkspace({ trip, onSave }: { trip: Trip; onSave: (operations: Trip
     saveOps({ planningTasks: [...(ops.planningTasks ?? []), ...templateTasks.map((templateTask, index) => ({ ...templateTask, position: (ops.planningTasks?.length ?? 0) + index }))] });
   };
   const assignmentPeople = Array.from(new Set([...leaders.map(leader => leader.name), ...going.map(attendee => attendee.name)])).sort((first, second) => first.localeCompare(second));
-  const tabs = [['attendees', 'Attendees'], ['expenses', 'Trip expenses'], ['tasks', 'Trip to-do list'], ['itinerary', 'Trip itinerary'], ['assignments', 'Assignments'], ['docs', 'Trip Docs'], ['flights', 'Flight compilation']] as const;
+  const tabs = [['attendees', 'Attendees'], ['expenses', 'Trip expenses'], ['tasks', 'Trip to-do list'], ['itinerary', 'Trip itinerary'], ['assignments', 'Assignments'], ['docs', 'Trip Docs'], ['photos', 'Trip Photos'], ['flights', 'Flight compilation']] as const;
   return <div className="mt-5 border-t border-[oklch(0.84_0.018_75)] pt-4">
     <div className="flex gap-1 overflow-x-auto pb-2">{tabs.map(([key, label]) => <button key={key} onClick={() => setTab(key)} className={`whitespace-nowrap rounded-full px-3 py-1 text-xs ${tab === key ? 'bg-[oklch(0.22_0.018_55)] text-white' : 'bg-[oklch(0.93_0.015_78)] text-[oklch(0.42_0.018_55)]'}`}>{label}</button>)}</div>
     {tab === 'attendees' && <AttendeeSection trip={trip} onSaveOperations={saveOps} />}
@@ -734,6 +765,7 @@ function TripWorkspace({ trip, onSave }: { trip: Trip; onSave: (operations: Trip
     {tab === 'itinerary' && <TripItinerary trip={trip} operations={ops} templateTrips={store.trips} onSave={saveOps} />}
     {tab === 'assignments' && <TripAssignments goingPeople={assignmentPeople} operations={ops} onSave={saveOps} />}
     {tab === 'docs' && <GuateTeamDocuments trip={trip} operations={ops} onSave={saveOps} />}
+    {tab === 'photos' && <TripPhotoLinks operations={ops} onSave={saveOps} />}
     {tab === 'flights' && <div className="space-y-3 pt-3"><div className="rounded-lg border border-[oklch(0.80_0.08_145)] bg-[oklch(0.975_0.02_145)] p-3 text-xs text-[oklch(0.32_0.08_145)]">Use the Guatemala landing time to organize airport shuttles. Each time is entered in the local time of that airport. Changes save when you leave a field.</div>{leaders.map(leader => <FlightCompilationEntry key={`leader-flight-${leader.name}`} name={leader.name} leader flight={ops.leaderLogistics?.[leader.name]?.flight} onUpdate={(field, value) => saveOps({ leaderLogistics: { ...ops.leaderLogistics, [leader.name]: { ...ops.leaderLogistics?.[leader.name], flight: { ...ops.leaderLogistics?.[leader.name]?.flight, [field]: value } } } })} />)}{going.map(attendee => <FlightCompilationEntry key={attendee.id} name={attendee.name} flight={attendee.tripLogistics?.flight} onUpdate={(field, value) => void updateFlight(attendee, field, value)} />)}<div className="flex justify-end border-t border-[oklch(0.90_0.012_76)] pt-4"><Button size="sm" onClick={() => downloadFlightCompilationPdf(trip, flightTravelers)}>Download PDF</Button></div></div>}
   </div>;
 }

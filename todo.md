@@ -285,3 +285,5 @@
 - [x] Trip Docs: allow approved users to delete any listed file after confirmation
 - [x] Trip Docs: display the deletion confirmation directly below the selected file row
 - [x] Deployment: push the reviewed medical tasks, resource editing, Trip Docs controls, and inline confirmation refinement to GitHub
+- [x] Trip Photos: add a per-trip dashboard-managed library of multiple named Google Photos, Apple Photos, Google Drive, or other photo-folder links
+- [x] Deployment: push the reviewed Trip Photos workspace update to GitHub for Netlify deployment
