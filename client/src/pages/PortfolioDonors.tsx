@@ -7,9 +7,10 @@ import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { AlertTriangle, ChevronRight, DollarSign, Mail, MapPin, MessageCircle, Plus, RefreshCw, Send, Trash2, X } from 'lucide-react';
+import { AlertTriangle, ChevronRight, DollarSign, Edit2, Mail, MapPin, MessageCircle, Plus, RefreshCw, Send, Trash2, X } from 'lucide-react';
 import ThankYouLetterControl from '@/components/ThankYouLetterControl';
 import { useAuth } from '@/_core/hooks/useAuth';
+import { lowerTierDonorContactUpdate } from '@/lib/lowerTierDonorContact';
 
 type PortfolioDonorsProps = { portfolio: Exclude<DonorPortfolio, 'major'> };
 
@@ -58,6 +59,9 @@ function DonorDetail({ donor, portfolio, onClose }: { donor: Donor; portfolio: P
   const [savingInteraction, setSavingInteraction] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [editingContact, setEditingContact] = useState(false);
+  const [savingContact, setSavingContact] = useState(false);
+  const [contactDraft, setContactDraft] = useState({ name: donor.name, email: donor.email ?? '', phone: donor.phone ?? '', address: donor.address ?? '', notes: donor.notes ?? '' });
 
   const transactions = detailQuery.data?.donations ?? [];
   const interactions = [...(detailQuery.data?.activities ?? [])].sort((a: any, b: any) => String(b.date).localeCompare(String(a.date)));
@@ -99,6 +103,21 @@ function DonorDetail({ donor, portfolio, onClose }: { donor: Donor; portfolio: P
     } finally { setDeleting(false); }
   };
 
+  const openContactEditor = () => {
+    setContactDraft({ name: donor.name, email: donor.email ?? '', phone: donor.phone ?? '', address: donor.address ?? '', notes: donor.notes ?? '' });
+    setEditingContact(true);
+  };
+
+  const saveContactDetails = async () => {
+    const update = lowerTierDonorContactUpdate(contactDraft);
+    if (!update) return;
+    setSavingContact(true);
+    try {
+      await updateDonor(donor.id, update);
+      setEditingContact(false);
+    } finally { setSavingContact(false); }
+  };
+
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose}>
@@ -121,9 +140,9 @@ function DonorDetail({ donor, portfolio, onClose }: { donor: Donor; portfolio: P
           </div>
         </div>}
 
-        <div className="mt-6 grid sm:grid-cols-2 gap-3 text-sm">
-          {donor.email && <p className="flex gap-2"><Mail size={16} className="mt-0.5" />{donor.email}</p>}
-          {donor.address && <p className="flex gap-2"><MapPin size={16} className="mt-0.5" />{donor.address}</p>}
+        <div className="mt-6 rounded-lg border border-[oklch(0.84_0.018_75)] bg-white p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-display text-2xl" style={{ color: 'oklch(0.22 0.018 55)' }}>Contact & internal notes</h2><p className="mt-1 text-xs" style={{ color: 'oklch(0.52 0.022 65)' }}>This information is visible only to the THV team.</p></div>{!editingContact && <Button size="sm" variant="outline" onClick={openContactEditor}><Edit2 size={14} /> Edit details</Button>}</div>
+          {editingContact ? <div className="mt-4 space-y-3"><div className="grid gap-3 sm:grid-cols-2"><label className="text-xs" style={{ color: 'oklch(0.48 0.022 65)' }}>Donor name<Input className="mt-1" aria-label="Donor name" value={contactDraft.name} onChange={event => setContactDraft(value => ({ ...value, name: event.target.value }))} /></label><label className="text-xs" style={{ color: 'oklch(0.48 0.022 65)' }}>Email address<Input className="mt-1" aria-label="Email address" type="email" value={contactDraft.email} onChange={event => setContactDraft(value => ({ ...value, email: event.target.value }))} /></label><label className="text-xs" style={{ color: 'oklch(0.48 0.022 65)' }}>Phone number<Input className="mt-1" aria-label="Phone number" value={contactDraft.phone} onChange={event => setContactDraft(value => ({ ...value, phone: event.target.value }))} /></label><label className="text-xs" style={{ color: 'oklch(0.48 0.022 65)' }}>Mailing address<Input className="mt-1" aria-label="Mailing address" value={contactDraft.address} onChange={event => setContactDraft(value => ({ ...value, address: event.target.value }))} /></label></div><label className="block text-xs" style={{ color: 'oklch(0.48 0.022 65)' }}>Internal team notes<Textarea className="mt-1" aria-label="Internal team notes" rows={4} value={contactDraft.notes} onChange={event => setContactDraft(value => ({ ...value, notes: event.target.value }))} placeholder="Add relationship context, preferences, or other team-only notes…" /></label><div className="flex justify-end gap-2"><Button size="sm" variant="outline" disabled={savingContact} onClick={() => setEditingContact(false)}>Cancel</Button><Button size="sm" disabled={savingContact || !contactDraft.name.trim()} onClick={() => void saveContactDetails()}>{savingContact ? 'Saving…' : 'Save details'}</Button></div></div> : <><div className="mt-4 grid gap-3 text-sm sm:grid-cols-2"><div><p className="text-[10px] uppercase tracking-[0.12em]" style={{ color: 'oklch(0.60 0.018 65)' }}>Donor name</p><p className="mt-1 font-medium" style={{ color: 'oklch(0.22 0.018 55)' }}>{donor.name}</p></div><div><p className="text-[10px] uppercase tracking-[0.12em]" style={{ color: 'oklch(0.60 0.018 65)' }}>Email address</p><p className="mt-1 flex gap-1.5 break-all" style={{ color: 'oklch(0.22 0.018 55)' }}><Mail size={14} className="mt-0.5 shrink-0" />{donor.email || 'Not added'}</p></div><div><p className="text-[10px] uppercase tracking-[0.12em]" style={{ color: 'oklch(0.60 0.018 65)' }}>Phone number</p><p className="mt-1" style={{ color: 'oklch(0.22 0.018 55)' }}>{donor.phone || 'Not added'}</p></div><div><p className="text-[10px] uppercase tracking-[0.12em]" style={{ color: 'oklch(0.60 0.018 65)' }}>Mailing address</p><p className="mt-1 flex gap-1.5 whitespace-pre-wrap" style={{ color: 'oklch(0.22 0.018 55)' }}><MapPin size={14} className="mt-0.5 shrink-0" />{donor.address || 'Not added'}</p></div></div><div className="mt-4 border-t border-[oklch(0.90_0.012_76)] pt-4"><p className="text-[10px] uppercase tracking-[0.12em]" style={{ color: 'oklch(0.60 0.018 65)' }}>Internal team notes</p><p className="mt-1 whitespace-pre-wrap text-sm" style={{ color: donor.notes ? 'oklch(0.28 0.018 55)' : 'oklch(0.52 0.022 65)' }}>{donor.notes || 'No internal notes added yet.'}</p></div></>}
         </div>
 
         {portfolio === 'monthly-giving' && <div className="mt-6 rounded-lg p-4 bg-[oklch(0.94_0.055_145)] border border-[oklch(0.84_0.065_145)]">
