@@ -290,3 +290,8 @@
 - [x] Lower-tier donor cards: add and edit donor name, email, mailing address, and phone number from Monthly Giving and Donors 500–5K details
 - [x] Lower-tier donor cards: add an editable internal team-notes section that is separate from the donor journey log
 - [x] Deployment: push the reviewed lower-tier donor contact and internal-notes update to GitHub for Netlify deployment
+- [x] Donor Task reports: sort the six-month and annual report grids by reporting-year giving and add one green $5,000 annual-giving divider without splitting the grid
+- [x] Donor Task reports: add a one-click copy action for email addresses of recipients at $5,000 or less in six-month and annual report grids
+- [x] Deployment: push the reviewed donor report-grid sorting and BCC email-copy update to GitHub for Netlify deployment
+- [x] Donor Task reports: sort the six-month and annual report grids by reporting-year giving and add one green $5,000 annual-giving divider without splitting the grid
+- [x] Deployment: push the reviewed donor report-grid ordering update to GitHub for Netlify deployment

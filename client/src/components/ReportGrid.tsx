@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import type { Donor } from '@/lib/types';
-import { REPORTS, reportYearGiving, type ReportKey } from '@/lib/reportRecipients';
+import { REPORTS, isAtOrBelowReportGivingDivider, reportGridBccEmails, reportYearGiving, sortReportGridRows, type ReportKey } from '@/lib/reportRecipients';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -16,14 +16,16 @@ export function ReportGrid({ report, donors, tasks, onSetCompletion }: { report:
   const [sentDate, setSentDate] = useState(TODAY);
   const [sentBy, setSentBy] = useState('Liz');
   const [busy, setBusy] = useState(false);
-  const rows = useMemo(() => donors.map(donor => {
+  const [bccCopied, setBccCopied] = useState(false);
+  const rows = useMemo(() => sortReportGridRows(donors.map(donor => {
     const record = tasks.find(task => task.donorId === donor.id && task.id === report.taskId);
     return { donor, record, sent: Boolean(record?.completedDate) };
-  }).sort((left, right) => {
-    if (left.sent !== right.sent) return left.sent ? 1 : -1;
-    return left.donor.name.localeCompare(right.donor.name);
-  }), [donors, report.taskId, tasks]);
+  }), report.givingYear, report.sortByGiving), [donors, report.givingYear, report.sortByGiving, report.taskId, tasks]);
   const unsentRows = rows.filter(row => !row.sent);
+  const givingDividerIndex = report.showGivingDivider
+    ? rows.findIndex(row => !row.sent && isAtOrBelowReportGivingDivider(row.donor, report.givingYear))
+    : -1;
+  const belowThresholdEmails = useMemo(() => report.showGivingDivider ? reportGridBccEmails(rows, report.givingYear) : [], [report.givingYear, report.showGivingDivider, rows]);
   const allSelected = unsentRows.length > 0 && unsentRows.every(row => selected.includes(row.donor.id));
   const setAllSelected = (checked: boolean) => setSelected(checked ? unsentRows.map(row => row.donor.id) : []);
   const toggleSelected = (id: string, checked: boolean) => setSelected(current => checked ? Array.from(new Set([...current, id])) : current.filter(currentId => currentId !== id));
@@ -39,6 +41,25 @@ export function ReportGrid({ report, donors, tasks, onSetCompletion }: { report:
     }
   };
 
+  const copyBelowThresholdEmails = async () => {
+    if (!belowThresholdEmails.length) return;
+    const emailList = belowThresholdEmails.join(', ');
+    try {
+      await navigator.clipboard.writeText(emailList);
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = emailList;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      textarea.remove();
+    }
+    setBccCopied(true);
+    window.setTimeout(() => setBccCopied(false), 2500);
+  };
+
   return <div className="mt-4 overflow-hidden rounded-xl border border-[oklch(0.87_0.018_75)] bg-white">
     <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-[oklch(0.89_0.012_78)] bg-[oklch(0.975_0.012_80)] px-4 py-3">
       <div><h2 className="font-display text-xl text-[oklch(0.22_0.018_55)]">{report.title}</h2><p className="mt-0.5 text-xs text-[oklch(0.52_0.022_65)]">All donor portfolios · sending this report logs a dated interaction on the donor card and advances Next Contact.</p></div>
@@ -51,6 +72,6 @@ export function ReportGrid({ report, donors, tasks, onSetCompletion }: { report:
     </div>}
     <div className="overflow-x-auto"><table className={`w-full ${report.showGivingAmount ? 'min-w-[790px]' : 'min-w-[660px]'} text-sm`}><thead className="border-b border-[oklch(0.89_0.012_78)] text-left text-[10px] uppercase tracking-[0.12em] text-[oklch(0.52_0.022_65)]"><tr>
       <th className="w-12 px-4 py-2 text-center"><input aria-label={`Select all unsent recipients for ${report.title}`} type="checkbox" checked={allSelected} onChange={event => setAllSelected(event.target.checked)} /></th><th className="px-4 py-2">Name</th><th className="px-4 py-2">Email</th><th className="px-4 py-2">Mailing address</th>{report.showGivingAmount && <th className="px-4 py-2 text-right">{report.amountLabel}</th>}<th className="px-4 py-2 text-center">Send status</th>
-    </tr></thead><tbody>{rows.map(({ donor, record, sent }) => <tr key={donor.id} className="border-b border-[oklch(0.94_0.008_75)] last:border-0"><td className="px-4 py-2.5 text-center">{sent ? <span className="inline-block h-4 w-4" aria-hidden="true" /> : <input aria-label={`Select ${donor.name} for ${report.title}`} type="checkbox" checked={selected.includes(donor.id)} onChange={event => toggleSelected(donor.id, event.target.checked)} />}</td><td className="px-4 py-2.5 font-medium text-[oklch(0.22_0.018_55)]">{donor.name}</td><td className="px-4 py-2.5 text-xs text-[oklch(0.42_0.018_55)]">{donor.email || '—'}</td><td className="max-w-[260px] px-4 py-2.5 text-xs text-[oklch(0.42_0.018_55)]">{donor.address || '—'}</td>{report.showGivingAmount && <td className="px-4 py-2.5 text-right font-medium text-[oklch(0.22_0.018_55)]">{currency(reportYearGiving(donor, report.givingYear))}</td>}<td className="px-4 py-2.5 text-center">{sent ? <div><span className="text-xs font-medium text-[oklch(0.45_0.13_145)]">Report sent on {formatDate(record?.completedDate)}</span><button disabled={busy} onClick={() => void onSetCompletion(donor, false, sentDate, sentBy)} className="ml-2 text-xs text-[oklch(0.52_0.022_65)] underline hover:text-[oklch(0.22_0.018_55)]">Undo</button></div> : <span className="text-xs font-medium text-[oklch(0.50_0.18_250)]">Not sent</span>}</td></tr>)}</tbody></table></div>
+    </tr></thead><tbody>{rows.map(({ donor, record, sent }, index) => <Fragment key={donor.id}>{index === givingDividerIndex && <tr><td colSpan={report.showGivingAmount ? 6 : 5} className="px-4 py-0"><div className="flex flex-wrap items-center gap-3 border-t-2 border-[oklch(0.48_0.13_145)] py-2"><span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[oklch(0.37_0.11_145)]">Annual giving of $5,000 or less</span><span className="h-px min-w-8 flex-1 bg-[oklch(0.65_0.08_145)]" />{belowThresholdEmails.length > 0 && <Button type="button" size="sm" variant="outline" className="h-7 border-[oklch(0.56_0.10_145)] px-2 text-xs text-[oklch(0.32_0.10_145)]" onClick={() => void copyBelowThresholdEmails()}>{bccCopied ? 'BCC emails copied' : `Copy BCC emails (${belowThresholdEmails.length})`}</Button>}<span className="sr-only" aria-live="polite">{bccCopied ? `${belowThresholdEmails.length} BCC email addresses copied.` : ''}</span></div></td></tr>}<tr className="border-b border-[oklch(0.94_0.008_75)] last:border-0"><td className="px-4 py-2.5 text-center">{sent ? <span className="inline-block h-4 w-4" aria-hidden="true" /> : <input aria-label={`Select ${donor.name} for ${report.title}`} type="checkbox" checked={selected.includes(donor.id)} onChange={event => toggleSelected(donor.id, event.target.checked)} />}</td><td className="px-4 py-2.5 font-medium text-[oklch(0.22_0.018_55)]">{donor.name}</td><td className="px-4 py-2.5 text-xs text-[oklch(0.42_0.018_55)]">{donor.email || '—'}</td><td className="max-w-[260px] px-4 py-2.5 text-xs text-[oklch(0.42_0.018_55)]">{donor.address || '—'}</td>{report.showGivingAmount && <td className="px-4 py-2.5 text-right font-medium text-[oklch(0.22_0.018_55)]">{currency(reportYearGiving(donor, report.givingYear))}</td>}<td className="px-4 py-2.5 text-center">{sent ? <div><span className="text-xs font-medium text-[oklch(0.45_0.13_145)]">Report sent on {formatDate(record?.completedDate)}</span><button disabled={busy} onClick={() => void onSetCompletion(donor, false, sentDate, sentBy)} className="ml-2 text-xs text-[oklch(0.52_0.022_65)] underline hover:text-[oklch(0.22_0.018_55)]">Undo</button></div> : <span className="text-xs font-medium text-[oklch(0.50_0.18_250)]">Not sent</span>}</td></tr></Fragment>)}</tbody></table></div>
   </div>;
 }
