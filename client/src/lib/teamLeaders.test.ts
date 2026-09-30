@@ -3,10 +3,10 @@ import { getTripLeaders } from './teamLeaders';
 
 describe('getTripLeaders', () => {
   it('applies saved leader capabilities and ticket status for a trip', () => {
-    expect(getTripLeaders(['Liz', 'Amy', 'Kirsten'], { leaderLogistics: { Liz: { purchasedTicket: true } } })).toEqual([
-      { name: 'Liz', tags: ['Leader', 'Nurse', 'SPANISH'], purchasedTicket: true },
-      { name: 'Amy', tags: ['Leader'], purchasedTicket: false },
-      { name: 'Kirsten', tags: ['Leader', 'SPANISH'], purchasedTicket: false },
+    expect(getTripLeaders(['Liz', 'Amy', 'Kirsten'], { leaderLogistics: { Liz: { purchasedTicket: true, inCountryExpensesPaid: true } } })).toEqual([
+      { name: 'Liz', tags: ['Leader', 'Nurse', 'SPANISH'], purchasedTicket: true, inCountryExpensesPaid: true },
+      { name: 'Amy', tags: ['Leader'], purchasedTicket: false, inCountryExpensesPaid: false },
+      { name: 'Kirsten', tags: ['Leader', 'SPANISH'], purchasedTicket: false, inCountryExpensesPaid: false },
     ]);
   });
 });

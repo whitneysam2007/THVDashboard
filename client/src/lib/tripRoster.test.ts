@@ -27,5 +27,6 @@ describe('summarizeTripRoster', () => {
     expect(isGoingAttendee({ purchasedTicket: true } as any)).toBe(true);
     expect(isGoingAttendee({ purchasedTicket: false, tripLogistics: { depositPaid: true } } as any)).toBe(true);
     expect(isGoingAttendee({ purchasedTicket: false, tripLogistics: { depositPaid: false } } as any)).toBe(false);
+    expect(isGoingAttendee({ purchasedTicket: false, tripLogistics: { inCountryExpensesPaid: true } } as any)).toBe(false);
   });
 });

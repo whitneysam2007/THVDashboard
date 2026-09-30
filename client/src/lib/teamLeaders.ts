@@ -4,6 +4,7 @@ export type TripLeader = {
   name: string;
   tags: string[];
   purchasedTicket: boolean;
+  inCountryExpensesPaid: boolean;
 };
 
 const TEAM_TAGS: Record<string, string[]> = {
@@ -21,5 +22,6 @@ export function getTripLeaders(teamMembers: string[], operations?: TripOperation
     name,
     tags: TEAM_TAGS[name] ?? ['Leader'],
     purchasedTicket: Boolean(operations?.leaderLogistics?.[name]?.purchasedTicket),
+    inCountryExpensesPaid: Boolean(operations?.leaderLogistics?.[name]?.inCountryExpensesPaid),
   }));
 }

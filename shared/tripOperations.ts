@@ -97,7 +97,11 @@ export type TripOperations = {
   expenses?: TripExpense[];
   quetzalesPerUsd?: number;
   expenseDivisor?: number;
-  leaderLogistics?: Record<string, { purchasedTicket?: boolean; flight?: TripFlightDetails }>;
+  leaderLogistics?: Record<string, {
+    purchasedTicket?: boolean;
+    inCountryExpensesPaid?: boolean;
+    flight?: TripFlightDetails;
+  }>;
   planningTasks?: TripPlanningTask[];
   itineraryDays?: TripItineraryDay[];
   activityGroups?: TripActivityGroup[];
@@ -122,5 +126,6 @@ export type TripOperations = {
 export type TripLogistics = {
   depositPaid?: boolean;
   depositDate?: string;
+  inCountryExpensesPaid?: boolean;
   flight?: TripFlightDetails;
 };
