@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultUsanaProject, getGardenTowerPdfDownloadUrl, getGuateTeamDocumentDownloadUrl, getTripExpenseReceiptDownloadUrl, safeDocumentName, safePdfName } from './usanaStorage';
+import { defaultUsanaProject, getGardenTowerPdfDownloadUrl, getGuateTeamDocumentDownloadUrl, getTripExpenseReceiptDownloadUrl, normalizeDocumentMimeType, safeDocumentName, safePdfName } from './usanaStorage';
 
 describe('USANA project storage helpers', () => {
   it('starts the global project record with the approved USANA contact', () => {
@@ -23,6 +23,12 @@ describe('USANA project storage helpers', () => {
   it('normalizes Guatemala team document names and rejects keys outside their trip scope', async () => {
     expect(safeDocumentName('../../Family Market List May 2027.xlsx')).toBe('..-..-family-market-list-may-2027.xlsx');
     await expect(getGuateTeamDocumentDownloadUrl('usana/garden-tower/example.pdf')).rejects.toThrow('Invalid Guatemala team document key.');
+  });
+
+  it('recognizes supported file extensions when a browser supplies a generic MIME type', () => {
+    expect(normalizeDocumentMimeType('Guatemala assignments.pdf', 'application/octet-stream')).toBe('application/pdf');
+    expect(normalizeDocumentMimeType('market-list.xlsx', '')).toBe('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    expect(normalizeDocumentMimeType('unknown.file', 'application/octet-stream')).toBe('application/octet-stream');
   });
 
   it('rejects receipt keys outside the private per-expense storage path', async () => {

@@ -13,6 +13,20 @@ export const ALLOWED_DOCUMENT_MIME_TYPES = new Set([
   'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 ]);
 
+const DOCUMENT_MIME_TYPE_BY_EXTENSION: Record<string, string> = {
+  pdf: 'application/pdf', json: 'application/json', txt: 'text/plain', csv: 'text/csv',
+  jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', heic: 'image/heic',
+  doc: 'application/msword', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xls: 'application/vnd.ms-excel', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+};
+
+export function normalizeDocumentMimeType(fileName: string, mimeType: string) {
+  const suppliedType = mimeType.trim().toLowerCase();
+  if (ALLOWED_DOCUMENT_MIME_TYPES.has(suppliedType)) return suppliedType;
+  const extension = fileName.split('.').pop()?.trim().toLowerCase();
+  return extension ? DOCUMENT_MIME_TYPE_BY_EXTENSION[extension] ?? suppliedType : suppliedType;
+}
+
 export type UsanaProject = NonNullable<TripOperations['usanaProject']>;
 
 export const defaultUsanaProject = (): UsanaProject => ({
@@ -96,10 +110,11 @@ export function safeDocumentName(fileName: string) {
 
 export async function uploadGuateTeamDocument(tripId: string, fileName: string, bytes: Buffer, mimeType: string) {
   if (bytes.byteLength > MAX_PRIVATE_DOCUMENT_BYTES) throw new Error('Please upload a file smaller than 15 MB.');
-  if (!ALLOWED_DOCUMENT_MIME_TYPES.has(mimeType)) throw new Error('This file type is not supported. Upload a PDF, image, Word document, spreadsheet, text, or CSV file.');
+  const normalizedMimeType = normalizeDocumentMimeType(fileName, mimeType);
+  if (!ALLOWED_DOCUMENT_MIME_TYPES.has(normalizedMimeType)) throw new Error('This file type is not supported. Upload a PDF, image, Word document, spreadsheet, text, or CSV file.');
   await ensureUsanaBucket();
   const path = `trips/guate-team/${tripId}/${nanoid()}-${safeDocumentName(fileName)}`;
-  const { error } = await getSupabaseServerClient().storage.from(USANA_BUCKET).upload(path, bytes, { contentType: mimeType, upsert: false });
+  const { error } = await getSupabaseServerClient().storage.from(USANA_BUCKET).upload(path, bytes, { contentType: normalizedMimeType, upsert: false });
   if (error) throw new Error(error.message);
   return { key: path };
 }
@@ -114,10 +129,11 @@ export async function getGuateTeamDocumentDownloadUrl(key: string) {
 
 export async function uploadTripExpenseReceipt(tripId: string, expenseId: string, fileName: string, bytes: Buffer, mimeType: string) {
   if (bytes.byteLength > MAX_PRIVATE_DOCUMENT_BYTES) throw new Error('Please upload a receipt smaller than 15 MB.');
-  if (!ALLOWED_DOCUMENT_MIME_TYPES.has(mimeType)) throw new Error('This receipt type is not supported. Upload an image, PDF, Word document, spreadsheet, text, or CSV file.');
+  const normalizedMimeType = normalizeDocumentMimeType(fileName, mimeType);
+  if (!ALLOWED_DOCUMENT_MIME_TYPES.has(normalizedMimeType)) throw new Error('This receipt type is not supported. Upload an image, PDF, Word document, spreadsheet, text, or CSV file.');
   await ensureUsanaBucket();
   const path = `trips/expense-receipts/${tripId}/${expenseId}/${nanoid()}-${safeDocumentName(fileName)}`;
-  const { error } = await getSupabaseServerClient().storage.from(USANA_BUCKET).upload(path, bytes, { contentType: mimeType, upsert: false });
+  const { error } = await getSupabaseServerClient().storage.from(USANA_BUCKET).upload(path, bytes, { contentType: normalizedMimeType, upsert: false });
   if (error) throw new Error(error.message);
   return { key: path };
 }

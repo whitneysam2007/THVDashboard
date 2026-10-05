@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input';
 import { trpc } from '@/lib/trpc';
 import { SENUHU_BANK_RATE_GTQ_PER_USD, summarizeTripExpenses } from '@/lib/tripExpenses';
 import { Pencil, Plus, Save, Trash2, X } from 'lucide-react';
-import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
+import { Fragment, useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 import { TRIP_EXPENSE_CATEGORIES, type TripExpense, type TripOperations } from '../../../shared/tripOperations';
 
 const money = (amount: number) => amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
@@ -22,7 +22,7 @@ function ExpenseFields({ draft, onChange }: { draft: Partial<TripExpense>; onCha
     <Input placeholder="Subcategory (optional)" value={draft.subcategory ?? ''} onChange={event => onChange({ subcategory: event.target.value || undefined })} />
     <Input placeholder="Amount USD" type="number" value={draft.usdAmount ?? ''} onChange={event => onChange({ usdAmount: optionalNumber(event.target.value) })} />
     <Input placeholder="Amount quetzales" type="number" value={draft.quetzalAmount ?? ''} onChange={event => onChange({ quetzalAmount: optionalNumber(event.target.value) })} />
-    <Input placeholder="Card / reimbursement owner" value={draft.paymentOwner ?? ''} onChange={event => onChange({ paymentOwner: event.target.value })} />
+    <Input placeholder="Paid by" value={draft.paymentOwner ?? ''} onChange={event => onChange({ paymentOwner: event.target.value })} />
     <Input className="col-span-2" placeholder="Receipt link (optional)" value={draft.receiptLink ?? ''} onChange={event => onChange({ receiptLink: event.target.value })} />
   </div>;
 }
@@ -83,22 +83,23 @@ export function ExpenseWorkspace({ tripId, expenses, ops, expense, setExpense, o
   };
 
   return <div className="space-y-3 pt-3">
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[860px] text-xs">
-        <thead><tr className="text-left text-[oklch(0.52_0.022_65)]"><th>Description</th><th>Category</th><th>USD</th><th>Quetzales</th><th>Card / reimbursement owner</th><th>Receipt</th><th className="text-right">Actions</th></tr></thead>
+    <div className="w-full">
+      <table className="w-full table-fixed text-[11px] sm:text-xs">
+        <colgroup><col className="w-[14%]" /><col className="w-[18%]" /><col className="w-[10%]" /><col className="w-[10%]" /><col className="w-[11%]" /><col className="w-[27%]" /><col className="w-[10%]" /></colgroup>
+        <thead><tr className="text-left text-[oklch(0.52_0.022_65)]"><th className="pr-1">Description</th><th className="pr-1">Category</th><th className="pr-1">USD</th><th className="pr-1">Quetzales</th><th className="pr-1">Paid by</th><th className="pr-1">Receipt</th><th className="text-right">Actions</th></tr></thead>
         <tbody>
-          {expenses.map(item => <>
+          {expenses.map(item => <Fragment key={item.id}>
             <tr key={item.id} className="border-t border-[oklch(0.9_0.012_78)]">
-              <td className="py-2">{item.description}</td>
-              <td>{item.category ?? 'Uncategorized'}{item.subcategory ? <span className="block text-[10px] text-[oklch(0.52_0.022_65)]">{item.subcategory}</span> : null}</td>
-              <td>{item.usdAmount !== undefined ? money(item.usdAmount) : '—'}</td>
-              <td>{item.quetzalAmount !== undefined ? `Q ${item.quetzalAmount.toLocaleString()}` : '—'}</td>
-              <td>{item.paymentOwner ?? '—'}</td>
-              <td><div className="flex flex-wrap items-center gap-2">{item.receiptDocument ? <Button size="sm" variant="outline" disabled={getReceiptUrl.isPending} onClick={() => void downloadReceipt(item)}>{getReceiptUrl.isPending ? 'Preparing…' : 'Download receipt'}</Button> : null}{item.receiptLink ? <a className="text-[oklch(0.48_0.16_250)]" href={item.receiptLink} target="_blank" rel="noreferrer">External link</a> : null}<label className="cursor-pointer text-[oklch(0.48_0.16_250)] underline">{item.receiptDocument ? 'Replace' : 'Take photo / upload'}<input className="sr-only" type="file" accept="image/jpeg,image/png,image/webp,image/heic,application/pdf,.jpg,.jpeg,.png,.webp,.heic,.pdf" capture="environment" disabled={uploadReceipt.isPending} onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; void attachReceipt(item, file); }} /></label></div></td>
-              <td className="py-1 text-right"><button aria-label={`Edit ${item.description}`} className="mr-1 rounded p-1 hover:bg-[oklch(0.94_0.02_250)]" onClick={() => setEditingExpense({ ...item })}><Pencil size={13} className="text-[oklch(0.42_0.15_250)]" /></button><button aria-label={`Delete ${item.description}`} className="rounded p-1 hover:bg-red-50" onClick={() => setDeleteCandidate(item)}><Trash2 size={13} className="text-[oklch(0.55_0.20_27)]" /></button></td>
+              <td className="break-words py-2 pr-1 align-top">{item.description}</td>
+              <td className="break-words py-2 pr-1 align-top">{item.category ?? 'Uncategorized'}{item.subcategory ? <span className="block text-[10px] text-[oklch(0.52_0.022_65)]">{item.subcategory}</span> : null}</td>
+              <td className="py-2 pr-1 align-top whitespace-nowrap">{item.usdAmount !== undefined ? money(item.usdAmount) : '—'}</td>
+              <td className="py-2 pr-1 align-top whitespace-nowrap">{item.quetzalAmount !== undefined ? `Q ${item.quetzalAmount.toLocaleString()}` : '—'}</td>
+              <td className="break-words py-2 pr-1 align-top">{item.paymentOwner ?? '—'}</td>
+              <td className="py-2 pr-1 align-top"><div className="flex flex-wrap items-center gap-x-2 gap-y-1 leading-tight">{item.receiptDocument ? <button className="text-[oklch(0.48_0.16_250)] underline" disabled={getReceiptUrl.isPending} onClick={() => void downloadReceipt(item)}>{getReceiptUrl.isPending ? 'Preparing…' : 'Open'}</button> : null}{item.receiptLink ? <a className="text-[oklch(0.48_0.16_250)] underline" href={item.receiptLink} target="_blank" rel="noreferrer">Open link</a> : null}<label className="cursor-pointer text-[oklch(0.48_0.16_250)] underline">{item.receiptDocument ? 'Replace' : 'Photo / upload'}<input className="sr-only" type="file" accept="image/jpeg,image/png,image/webp,image/heic,application/pdf,.jpg,.jpeg,.png,.webp,.heic,.pdf" capture="environment" disabled={uploadReceipt.isPending} onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; void attachReceipt(item, file); }} /></label></div></td>
+              <td className="py-1 text-right align-top whitespace-nowrap"><button aria-label={`Edit ${item.description}`} className="rounded p-1 hover:bg-[oklch(0.94_0.02_250)]" onClick={() => setEditingExpense({ ...item })}><Pencil size={13} className="text-[oklch(0.42_0.15_250)]" /></button><button aria-label={`Delete ${item.description}`} className="rounded p-1 hover:bg-red-50" onClick={() => setDeleteCandidate(item)}><Trash2 size={13} className="text-[oklch(0.55_0.20_27)]" /></button></td>
             </tr>
             {editingExpense?.id === item.id && <tr className="border-t border-[oklch(0.88_0.04_250)] bg-[oklch(0.98_0.012_250)]"><td colSpan={7} className="p-3"><p className="mb-2 text-xs font-medium text-[oklch(0.42_0.15_250)]">Edit expense</p><ExpenseFields draft={editingExpense} onChange={updates => setEditingExpense(current => current ? { ...current, ...updates } : current)} /><div className="mt-3 flex gap-2"><Button size="sm" onClick={saveEdit}><Save size={13} className="mr-1" /> Save changes</Button><Button size="sm" variant="outline" onClick={() => setEditingExpense(null)}><X size={13} className="mr-1" /> Cancel</Button></div></td></tr>}
-          </>)}
+          </Fragment>)}
         </tbody>
       </table>
     </div>

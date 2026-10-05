@@ -70,6 +70,7 @@ function FlightCompilationEntry({ name, leader, flight, onUpdate }: { name: stri
 }
 
 const GUATE_DOCUMENT_CATEGORIES: TripGuateTeamDocument['category'][] = ['Garden Tower', 'Family market list', 'Home visits', 'Other'];
+const MAX_TRIP_DOCUMENT_BYTES = 15 * 1024 * 1024;
 
 function fileToBase64(file: File) {
   return new Promise<string>((resolve, reject) => {
@@ -92,9 +93,10 @@ function GuateTeamDocuments({ trip, operations, onSave }: { trip: Trip; operatio
   const uploadSelected = async () => {
     if (!file) return;
     setMessage(null);
+    if (file.size > MAX_TRIP_DOCUMENT_BYTES) { setMessage('Please choose a file smaller than 15 MB.'); return; }
     try {
       const base64 = await fileToBase64(file);
-      const uploaded = await upload.mutateAsync({ tripId: trip.id, fileName: file.name, mimeType: file.type || 'application/pdf', base64 });
+      const uploaded = await upload.mutateAsync({ tripId: trip.id, fileName: file.name, mimeType: file.type || 'application/octet-stream', base64 });
       onSave({ guateTeamDocuments: [...documents, { id: nanoid(), name: file.name, category, key: uploaded.key, mimeType: file.type, uploadedAt: new Date().toISOString() }] });
       setFile(null);
       setMessage('Document uploaded to this trip.');
@@ -127,7 +129,8 @@ function GuateTeamDocuments({ trip, operations, onSave }: { trip: Trip; operatio
     <div className="rounded-lg border border-[oklch(0.84_0.018_75)] bg-[oklch(0.975_0.012_80)] p-4">
       <p className="font-medium text-sm text-[oklch(0.22_0.018_55)]">Trip Docs</p>
       <p className="mt-1 text-xs text-[oklch(0.52_0.022_65)]">These are trip-specific documents only. Materials that span several trips should be added on Reports & Resources under the Trips header.</p>
-      <div className="mt-3 grid gap-2 sm:grid-cols-[180px_1fr_auto]"><select aria-label="Document category" value={category} onChange={event => setCategory(event.target.value as TripGuateTeamDocument['category'])} className="h-9 rounded border border-[oklch(0.80_0.018_75)] bg-white px-2 text-sm">{GUATE_DOCUMENT_CATEGORIES.map(option => <option key={option} value={option}>{option}</option>)}</select><Input aria-label="Choose trip-specific document" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png" onChange={event => setFile(event.target.files?.[0] ?? null)} /><Button size="sm" disabled={!file || upload.isPending} onClick={() => void uploadSelected()}>{upload.isPending ? 'Uploading…' : 'Upload file'}</Button></div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-[180px_1fr_auto]"><select aria-label="Document category" value={category} onChange={event => setCategory(event.target.value as TripGuateTeamDocument['category'])} className="h-9 rounded border border-[oklch(0.80_0.018_75)] bg-white px-2 text-sm">{GUATE_DOCUMENT_CATEGORIES.map(option => <option key={option} value={option}>{option}</option>)}</select><Input aria-label="Choose trip-specific document" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.webp,.heic" onChange={event => { const selected = event.target.files?.[0] ?? null; setFile(selected); setMessage(selected ? `${selected.name} is ready to upload.` : null); }} /><Button size="sm" disabled={!file || upload.isPending} onClick={() => void uploadSelected()}>{upload.isPending ? 'Uploading…' : 'Upload selected file'}</Button></div>
+      <p className="mt-2 text-xs text-[oklch(0.52_0.022_65)]">PDFs are supported, along with Word, Excel, images, text, and CSV files. Maximum file size: 15 MB.</p>
       {message && <p className="mt-2 text-xs text-[oklch(0.42_0.018_55)]">{message}</p>}
     </div>
     {documents.length ? <div className="space-y-2">{documents.map(document => <div key={document.id} className="rounded-lg border border-[oklch(0.88_0.018_75)] bg-white p-3"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm font-medium text-[oklch(0.22_0.018_55)]">{document.name}</p><p className="mt-0.5 text-xs text-[oklch(0.52_0.022_65)]">{document.category} · Uploaded {formatDate(document.uploadedAt.slice(0, 10))}</p></div><div className="flex gap-2"><Button size="sm" variant="outline" disabled={getDownloadUrl.isPending} onClick={() => void downloadDocument(document)}>{getDownloadUrl.isPending ? 'Preparing…' : 'Download file'}</Button><Button size="sm" variant="outline" className="border-[oklch(0.72_0.11_27)] text-[oklch(0.48_0.18_27)] hover:bg-[oklch(0.97_0.025_27)]" onClick={() => setDeleteCandidate(document)}><Trash2 size={14} className="mr-1" />Delete</Button></div></div>{deleteCandidate?.id === document.id && <div role="alertdialog" className="mt-3 border-t border-[oklch(0.80_0.10_27)] pt-3"><p className="text-sm font-medium text-[oklch(0.42_0.16_27)]">Delete “{document.name}” from this trip?</p><p className="mt-1 text-xs text-[oklch(0.48_0.08_27)]">This removes the file from Trip Docs. It will no longer be accessible from the dashboard.</p><div className="mt-3 flex gap-2"><Button size="sm" variant="outline" onClick={() => setDeleteCandidate(null)}>Keep file</Button><Button size="sm" className="bg-[oklch(0.48_0.18_27)] hover:bg-[oklch(0.42_0.18_27)]" onClick={removeDocument}>Delete file</Button></div></div>}</div>)}</div> : <p className="rounded-lg border border-dashed border-[oklch(0.84_0.018_75)] px-4 py-7 text-center text-sm italic text-[oklch(0.52_0.022_65)]">No trip-specific documents have been added to this trip yet.</p>}
